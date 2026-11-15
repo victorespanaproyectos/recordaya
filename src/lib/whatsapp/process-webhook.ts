@@ -1,3 +1,4 @@
+import { handleCustomerReply } from "@/lib/appointments/replies";
 import { getSupabaseAdmin, isSupabaseConfigured } from "@/lib/supabase/admin";
 import {
   incomingText,
@@ -73,7 +74,7 @@ async function applyStatus(update: WaStatusUpdate): Promise<void> {
 
 async function saveIncoming(message: WaIncomingMessage): Promise<void> {
   const db = getSupabaseAdmin();
-  const { error } = await db.from("inbound_messages").upsert(
+  const { data, error } = await db.from("inbound_messages").upsert(
     {
       wa_message_id: message.id,
       from_phone: message.from,
@@ -84,6 +85,17 @@ async function saveIncoming(message: WaIncomingMessage): Promise<void> {
       received_at: new Date(Number(message.timestamp) * 1000).toISOString(),
     },
     { onConflict: "wa_message_id", ignoreDuplicates: true },
-  );
+  ).select("id");
   if (error) throw error;
+
+  // Vacío = Meta reintentó un mensaje que ya procesamos.
+  const inserted = data?.[0];
+  if (!inserted) return;
+
+  await handleCustomerReply({
+    inboundId: inserted.id,
+    fromPhone: message.from,
+    text: incomingText(message),
+    replyTo: message.context?.id ?? null,
+  });
 }

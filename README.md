@@ -57,7 +57,7 @@ Completa `.env.local` (ver comentarios en `.env.example`).
 
 ### 2. Base de datos
 
-En Supabase → **SQL Editor**, pega y ejecuta en orden los archivos de `supabase/migrations/` (`0001_init.sql`, `0002_reminders.sql`, `0003_service_role_grants.sql`).
+En Supabase → **SQL Editor**, pega y ejecuta en orden los archivos de `supabase/migrations/` (`0001_init.sql`, `0002_reminders.sql`, `0003_service_role_grants.sql`, `0004_customer_replies.sql`).
 
 ### 3. Ejecutar
 
@@ -97,6 +97,18 @@ En **Meta for Developers → tu app → WhatsApp → Configuración → Webhook*
 - URL de devolución de llamada: `https://<tu-tunel>/api/webhooks/whatsapp`
 - Token de verificación: el valor de `WHATSAPP_WEBHOOK_VERIFY_TOKEN`
 - Suscribirse al campo **messages**
+
+`WHATSAPP_APP_SECRET` (Meta for Developers → Configuración de la app → Básica → Clave secreta) es obligatorio: sin él, el webhook rechaza todos los eventos por firma inválida.
+
+Con el webhook activo, el cliente puede responder al recordatorio:
+
+| Respuesta | Efecto |
+| --- | --- |
+| `1`, `sí`, `confirmo`… | El turno pasa a `confirmed` y se le contesta confirmando. Los recordatorios siguientes usan la plantilla de "turno confirmado". |
+| `2`, `no`, `cancelar`… | Se cancelan los recordatorios pendientes, el turno pasa a `cancelled` y se envía la plantilla de cancelación. |
+| Otra cosa | Se le recuerda su próximo turno y las opciones 1 / 2. |
+
+El turno se identifica por el mensaje citado (si responde a uno) o, si no, por su próximo turno activo.
 
 ### 6. Turnos y recordatorios programados
 
@@ -142,7 +154,8 @@ En **Meta for Developers → tu app → WhatsApp → Configuración → Webhook*
 - [x] Webhook con verificación de firma y estados de mensajes
 - [x] Esquema de base de datos
 - [x] Programación de recordatorios 24 h / 2 h (QStash)
-- [ ] Confirmar / reprogramar / cancelar desde la respuesta del cliente
+- [x] Confirmar / cancelar respondiendo 1 / 2
+- [ ] Reprogramar desde WhatsApp
 - [ ] Panel web: calendario, clientes, historial y métricas
 - [ ] Login multi-negocio
 - [ ] Deploy en Vercel + demo

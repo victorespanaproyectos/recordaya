@@ -70,6 +70,25 @@ export async function sendTemplate(input: SendTemplateInput): Promise<SendTempla
     },
   };
 
+  return postMessage(body);
+}
+
+/**
+ * Envía un texto libre. Solo funciona dentro de la ventana de 24 h
+ * desde el último mensaje del cliente (por eso lo usamos para contestar respuestas).
+ */
+export async function sendText(to: string, body: string): Promise<SendTemplateResult> {
+  return postMessage({
+    messaging_product: "whatsapp",
+    recipient_type: "individual",
+    to: normalizePhone(to),
+    type: "text",
+    text: { body, preview_url: false },
+  });
+}
+
+async function postMessage(body: unknown): Promise<SendTemplateResult> {
+  const config = getWhatsAppConfig();
   const res = await fetch(
     `${GRAPH_URL}/${config.apiVersion}/${config.phoneNumberId}/messages`,
     {
