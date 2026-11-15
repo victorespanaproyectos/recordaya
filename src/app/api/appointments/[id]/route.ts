@@ -1,12 +1,11 @@
 import { isAuthorizedAdmin } from "@/lib/auth/admin-key";
-import { loadAppointment, notifyAppointment, type NotifyResult } from "@/lib/appointments/notify";
-import { cancelReminders, planReminders } from "@/lib/appointments/reminders";
+import { loadAppointment } from "@/lib/appointments/notify";
+import { ServiceError, updateAppointment, type StatusUpdate } from "@/lib/appointments/service";
 import { parseIsoWithOffset } from "@/lib/dates";
 import { badRequest, notFound, readJson, serverError, unauthorized } from "@/lib/http";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-const FINAL_STATUSES = ["cancelled", "completed", "no_show"];
 
 /**
  * GET /api/appointments/:id
@@ -35,17 +34,14 @@ export async function GET(request: Request, ctx: RouteContext<"/api/appointments
 }
 
 interface PatchBody {
-  /** Cambiar estado: confirmar, cancelar, marcar como completado o ausente. */
-  status?: "confirmed" | "cancelled" | "completed" | "no_show";
-  /** Reprogramar: nueva fecha ISO con zona horaria. */
+  status?: StatusUpdate;
   starts_at?: string;
-  /** Avisar al cliente por WhatsApp de la cancelación / nueva fecha (por defecto: true). */
   notify?: boolean;
 }
 
 /**
  * PATCH /api/appointments/:id
- * - { starts_at }            → reprograma: cancela recordatorios, crea nuevos y avisa la nueva fecha.
+ * - { starts_at }            → reprograma y avisa la nueva fecha.
  * - { status: "cancelled" }  → cancela recordatorios y avisa al cliente.
  * - { status: "confirmed" }  → los recordatorios siguientes usan la plantilla de "turno confirmado".
  * - { status: "completed" | "no_show" } → cancela recordatorios pendientes.
@@ -57,57 +53,21 @@ export async function PATCH(request: Request, ctx: RouteContext<"/api/appointmen
 
   const body = await readJson<PatchBody>(request);
   if (!body) return badRequest("Body JSON inválido");
-  if (body.status && body.starts_at) return badRequest("Envía status o starts_at, no ambos");
 
-  const allowed = ["confirmed", "cancelled", "completed", "no_show"];
-  if (body.status !== undefined && !allowed.includes(body.status)) {
-    return badRequest(`status debe ser uno de: ${allowed.join(", ")}`);
-  }
-
-  let newStart: Date | null = null;
+  let startsAt: Date | undefined;
   if (body.starts_at !== undefined) {
-    newStart = parseIsoWithOffset(body.starts_at);
-    if (!newStart) return badRequest("starts_at debe ser ISO con zona horaria");
-    if (newStart.getTime() <= Date.now()) return badRequest("starts_at debe ser futuro");
+    const parsed = parseIsoWithOffset(body.starts_at);
+    if (!parsed) return badRequest("starts_at debe ser ISO con zona horaria");
+    startsAt = parsed;
   }
-  if (!body.status && !newStart) return badRequest("Nada para actualizar");
 
   try {
-    const appointment = await loadAppointment(id);
-    if (!appointment) return notFound();
-    if (FINAL_STATUSES.includes(appointment.status)) {
-      return Response.json(
-        { error: `El turno ya está en estado ${appointment.status}` },
-        { status: 409 },
-      );
-    }
-
-    const db = getSupabaseAdmin();
-    const notify = body.notify !== false;
-    let notification: NotifyResult | null = null;
-
-    if (newStart) {
-      await cancelReminders(id);
-      const { error } = await db
-        .from("appointments")
-        .update({ starts_at: newStart.toISOString(), status: "rescheduled" })
-        .eq("id", id);
-      if (error) throw error;
-
-      const updated = (await loadAppointment(id))!;
-      await planReminders(updated);
-      if (notify) notification = await notifyAppointment(updated, "confirmation");
-    } else {
-      if (body.status !== "confirmed") await cancelReminders(id);
-      const { error } = await db.from("appointments").update({ status: body.status }).eq("id", id);
-      if (error) throw error;
-      if (body.status === "cancelled" && notify) {
-        notification = await notifyAppointment(appointment, "cancellation");
-      }
-    }
-
-    return Response.json({ appointment: await loadAppointment(id), notification });
+    const result = await updateAppointment(id, { status: body.status, startsAt, notify: body.notify });
+    return Response.json(result);
   } catch (error) {
+    if (error instanceof ServiceError) {
+      return Response.json({ error: error.message }, { status: error.status });
+    }
     return serverError("appointments/:id", error);
   }
 }

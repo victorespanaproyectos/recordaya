@@ -11,7 +11,7 @@ Recordatorios de turnos por WhatsApp para negocios: envío automático 24 h y 2 
 - **WhatsApp Cloud API** (Graph API v26.0) con plantillas aprobadas
 - **Upstash QStash** (envíos programados)
 - **Vercel** (deploy) · producción: https://recordaya.vercel.app
-- Próximamente: Tailwind + shadcn/ui (panel)
+- **Tailwind CSS 4** + lucide-react (panel web)
 
 ## Arquitectura
 
@@ -149,12 +149,27 @@ El turno se identifica por el mensaje citado (si responde a uno) o, si no, por s
 
 5. (Opcional) En QStash → **Schedules**, crea uno con destino `APP_URL/api/jobs/dispatch` y cron `0 * * * *`.
 
+## Panel web
+
+- `/` — landing pública del proyecto.
+- `/login` — acceso con `PANEL_PASSWORD` (cookie de sesión firmada con HMAC, 7 días).
+- `/panel` — agenda por día (próximos, pasados, cancelados), métricas, actividad reciente y alta de turnos con vista previa del mensaje de WhatsApp.
+- `/panel/turnos/:id` — detalle con la conversación (mensajes enviados con ✓/✓✓/leído y respuestas del cliente) y acciones: confirmar, reprogramar, atendido, ausente y cancelar.
+
+Las páginas leen Supabase en el servidor (Server Components dentro de `<Suspense>`, compatible con Cache Components) y las acciones son Server Actions que verifican la sesión. La API (`/api/appointments`) y el panel comparten la misma lógica (`src/lib/appointments/service.ts`).
+
 ## Deploy en Vercel
 
 1. Importa el repo en Vercel (preset Next.js).
 2. En **Environment Variables** pega las variables de `.env.example` con valores de producción (`QSTASH_DEV=false`, sin `APP_URL`: se toma la URL de producción de Vercel).
 3. En **Integrations** agrega **Upstash QStash** (plan Free): crea `QSTASH_TOKEN`, `QSTASH_URL` y las dos signing keys automáticamente.
 4. En Meta, cambia la URL del webhook a `https://<tu-proyecto>.vercel.app/api/webhooks/whatsapp` (hay que volver a escribir el token de verificación).
+5. Publica la app de Meta (requiere `/privacidad` y `/eliminacion-de-datos`) y suscribe la app a tu cuenta de WhatsApp Business; sin esto, los mensajes reales no llegan al webhook:
+
+   ```bash
+   curl -X POST "https://graph.facebook.com/v26.0/$WHATSAPP_BUSINESS_ACCOUNT_ID/subscribed_apps" \
+     -H "Authorization: Bearer $WHATSAPP_ACCESS_TOKEN"
+   ```
 
 Cada push a `main` despliega automáticamente.
 
@@ -166,8 +181,9 @@ Cada push a `main` despliega automáticamente.
 - [x] Programación de recordatorios 24 h / 2 h (QStash)
 - [x] Confirmar / cancelar respondiendo 1 / 2
 - [ ] Reprogramar desde WhatsApp
-- [ ] Panel web: calendario, clientes, historial y métricas
+- [x] Panel web: agenda, historial de mensajes y métricas
+- [ ] Panel: listado de clientes
 - [ ] Login multi-negocio
 - [x] Deploy en Vercel
-- [ ] Publicar la app de Meta (eventos reales: entregado, leído, respuestas)
+- [x] Publicar la app de Meta (eventos reales: entregado, leído, respuestas)
 - [ ] Demo pública

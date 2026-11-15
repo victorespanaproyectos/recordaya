@@ -73,7 +73,7 @@ export async function notifyAppointment(
     const result = await sendTemplate({ to: appt.customer.phone, template, bodyParams: params });
     const { error } = await db
       .from("messages")
-      .insert({ ...base, status: "accepted", wa_message_id: result.messageId });
+      .insert({ ...base, status: "accepted", sent_at: new Date().toISOString(), wa_message_id: result.messageId });
     if (error) console.error("[notify] Enviado pero no se pudo guardar:", error);
     return { ok: true, waMessageId: result.messageId };
   } catch (err) {

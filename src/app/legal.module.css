@@ -23,6 +23,11 @@
 
 .page ul {
   padding-left: 22px;
+  list-style: disc;
+}
+
+.page ol {
+  list-style: decimal;
 }
 
 .page a {

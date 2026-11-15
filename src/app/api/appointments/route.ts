@@ -1,10 +1,7 @@
 import { isAuthorizedAdmin } from "@/lib/auth/admin-key";
-import { loadAppointment, notifyAppointment } from "@/lib/appointments/notify";
-import { planReminders } from "@/lib/appointments/reminders";
+import { createAppointment, ServiceError } from "@/lib/appointments/service";
 import { parseIsoWithOffset } from "@/lib/dates";
-import { badRequest, isNonEmptyString, notFound, readJson, serverError, unauthorized } from "@/lib/http";
-import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import { normalizePhone } from "@/lib/whatsapp/client";
+import { badRequest, isNonEmptyString, readJson, serverError, unauthorized } from "@/lib/http";
 
 interface CreateAppointmentBody {
   business_id: string;
@@ -29,70 +26,34 @@ export async function POST(request: Request) {
 
   const body = await readJson<CreateAppointmentBody>(request);
   if (!body) return badRequest("Body JSON inválido");
-
   if (!isNonEmptyString(body.business_id)) return badRequest("Falta business_id");
   if (!isNonEmptyString(body.customer?.name)) return badRequest("Falta customer.name");
-  // "�" = bytes que no eran UTF-8 (ej. Invoke-RestMethod sin charset=utf-8): mejor rechazar que enviar "Espa�a".
-  if ([body.customer!.name, body.service, body.notes].some((v) => typeof v === "string" && v.includes("�"))) {
-    return badRequest("Texto con caracteres inválidos: envía el body en UTF-8 (Content-Type: application/json; charset=utf-8)");
-  }
-  const phone = normalizePhone(String(body.customer?.phone ?? ""));
-  if (phone.length < 8 || phone.length > 15) {
-    return badRequest("customer.phone debe estar en formato internacional (ej. 59899123456)");
-  }
 
   const startsAt = parseIsoWithOffset(body.starts_at);
   if (!startsAt) return badRequest('starts_at debe ser ISO con zona horaria (ej. "2026-11-17T15:30:00-03:00")');
-  if (startsAt.getTime() <= Date.now()) return badRequest("starts_at debe ser futuro");
 
   let endsAt: Date | null = null;
   if (body.ends_at !== undefined) {
     endsAt = parseIsoWithOffset(body.ends_at);
-    if (!endsAt || endsAt <= startsAt) return badRequest("ends_at inválido o anterior a starts_at");
+    if (!endsAt) return badRequest("ends_at inválido");
   }
 
   try {
-    const db = getSupabaseAdmin();
-
-    const { data: business, error: businessError } = await db
-      .from("businesses")
-      .select("id")
-      .eq("id", body.business_id)
-      .maybeSingle();
-    if (businessError) throw businessError;
-    if (!business) return notFound("El negocio no existe");
-
-    const { data: customer, error: customerError } = await db
-      .from("customers")
-      .upsert(
-        { business_id: business.id, phone, name: body.customer!.name.trim() },
-        { onConflict: "business_id,phone" },
-      )
-      .select("id")
-      .single();
-    if (customerError) throw customerError;
-
-    const { data: created, error: apptError } = await db
-      .from("appointments")
-      .insert({
-        business_id: business.id,
-        customer_id: customer.id,
-        starts_at: startsAt.toISOString(),
-        ends_at: endsAt?.toISOString() ?? null,
-        service: body.service?.trim() || null,
-        notes: body.notes?.trim() || null,
-      })
-      .select("id")
-      .single();
-    if (apptError) throw apptError;
-
-    const appointment = (await loadAppointment(created.id))!;
-    const reminders = await planReminders(appointment);
-    const confirmation =
-      body.notify === false ? null : await notifyAppointment(appointment, "confirmation");
-
-    return Response.json({ appointment, reminders, confirmation }, { status: 201 });
+    const result = await createAppointment({
+      businessId: body.business_id,
+      customerName: body.customer!.name,
+      customerPhone: String(body.customer?.phone ?? ""),
+      startsAt,
+      endsAt,
+      service: body.service,
+      notes: body.notes,
+      notify: body.notify,
+    });
+    return Response.json(result, { status: 201 });
   } catch (error) {
+    if (error instanceof ServiceError) {
+      return Response.json({ error: error.message }, { status: error.status });
+    }
     return serverError("appointments", error);
   }
 }

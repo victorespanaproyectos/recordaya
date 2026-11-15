@@ -150,6 +150,7 @@ export async function sendReminder(messageId: string): Promise<SendReminderResul
       .from("messages")
       .update({
         status: "accepted",
+        sent_at: new Date().toISOString(),
         template_name: template,
         variables,
         wa_message_id: result.messageId,

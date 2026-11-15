@@ -115,7 +115,9 @@ async function reply(appt: AppointmentContext, body: string): Promise<void> {
   };
   try {
     const result = await sendText(appt.customer.phone, body);
-    await db.from("messages").insert({ ...base, status: "accepted", wa_message_id: result.messageId });
+    await db
+      .from("messages")
+      .insert({ ...base, status: "accepted", sent_at: new Date().toISOString(), wa_message_id: result.messageId });
   } catch (err) {
     console.error("[replies] No se pudo contestar:", err);
     await db.from("messages").insert({
