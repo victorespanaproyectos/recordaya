@@ -20,6 +20,18 @@ export function requireEnv(name: string): string {
   return value;
 }
 
+/**
+ * URL pública de la app (sin "/" final). QStash la usa para llamar a los jobs.
+ * En desarrollo: la URL del túnel. En Vercel se deduce de VERCEL_URL si no se define.
+ */
+export function getAppUrl(): string {
+  const explicit = process.env.APP_URL;
+  if (explicit) return explicit.replace(/\/+$/, "");
+  const vercel = process.env.VERCEL_PROJECT_PRODUCTION_URL || process.env.VERCEL_URL;
+  if (vercel) return `https://${vercel}`;
+  throw new ConfigError("Falta la variable de entorno APP_URL (URL pública de la app).");
+}
+
 export type TemplateParamFormat = "named" | "positional";
 
 export interface WhatsAppConfig {
