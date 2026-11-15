@@ -57,7 +57,7 @@ Completa `.env.local` (ver comentarios en `.env.example`).
 
 ### 2. Base de datos
 
-En Supabase → **SQL Editor**, pega y ejecuta en orden los archivos de `supabase/migrations/` (`0001_init.sql`, `0002_reminders.sql`).
+En Supabase → **SQL Editor**, pega y ejecuta en orden los archivos de `supabase/migrations/` (`0001_init.sql`, `0002_reminders.sql`, `0003_service_role_grants.sql`).
 
 ### 3. Ejecutar
 
@@ -81,7 +81,7 @@ $body = @{
 } | ConvertTo-Json
 
 Invoke-RestMethod -Method Post -Uri http://localhost:3000/api/messages/test `
-  -Headers $headers -ContentType "application/json" -Body $body
+  -Headers $headers -ContentType "application/json; charset=utf-8" -Body $body
 ```
 
 ### 5. Webhook (estados de entrega y respuestas)
@@ -100,7 +100,9 @@ En **Meta for Developers → tu app → WhatsApp → Configuración → Webhook*
 
 ### 6. Turnos y recordatorios programados
 
-1. En [Upstash Console](https://console.upstash.com) → **QStash**, copia el token y las dos signing keys a `.env.local`, y pon en `APP_URL` la URL pública (el túnel en desarrollo).
+1. QStash:
+   - **Desarrollo:** `QSTASH_DEV=true` y `APP_URL=http://localhost:3000`. El SDK arranca un QStash local, sin cuenta ni túnel.
+   - **Producción:** en [Upstash Console](https://console.upstash.com) → **QStash**, copia el token y las dos signing keys, `QSTASH_DEV=false` y `APP_URL` con la URL pública.
 2. Crea un negocio en Supabase (SQL Editor):
 
    ```sql
@@ -119,7 +121,7 @@ En **Meta for Developers → tu app → WhatsApp → Configuración → Webhook*
    } | ConvertTo-Json
 
    Invoke-RestMethod -Method Post -Uri http://localhost:3000/api/appointments `
-     -Headers $headers -ContentType "application/json" -Body $body
+     -Headers $headers -ContentType "application/json; charset=utf-8" -Body $body
    ```
 
    Responde con el turno, los recordatorios programados y el resultado de la confirmación (`"notify": false` para no enviarla).
@@ -128,7 +130,7 @@ En **Meta for Developers → tu app → WhatsApp → Configuración → Webhook*
 
    ```powershell
    Invoke-RestMethod -Method Patch -Uri http://localhost:3000/api/appointments/UUID_DEL_TURNO `
-     -Headers $headers -ContentType "application/json" -Body '{"status":"cancelled"}'
+     -Headers $headers -ContentType "application/json; charset=utf-8" -Body '{"status":"cancelled"}'
    # o: -Body '{"starts_at":"2026-11-18T10:00:00-03:00"}'
    ```
 

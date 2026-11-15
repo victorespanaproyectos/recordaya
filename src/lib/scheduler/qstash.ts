@@ -8,12 +8,22 @@ import { getAppUrl, requireEnv } from "@/lib/env";
 
 let client: Client | null = null;
 
+/**
+ * QSTASH_DEV=true → servidor local de QStash (127.0.0.1:8080), sin cuenta ni túnel.
+ * El SDK lo descarga y lo arranca solo, con credenciales de desarrollo fijas.
+ */
+export function isQStashDevMode(): boolean {
+  return process.env.QSTASH_DEV === "true" || process.env.QSTASH_DEV === "1";
+}
+
 function getClient(): Client {
   if (!client) {
-    client = new Client({
-      token: requireEnv("QSTASH_TOKEN"),
-      ...(process.env.QSTASH_URL && { baseUrl: process.env.QSTASH_URL }),
-    });
+    client = isQStashDevMode()
+      ? new Client({ devMode: true })
+      : new Client({
+          token: requireEnv("QSTASH_TOKEN"),
+          ...(process.env.QSTASH_URL && { baseUrl: process.env.QSTASH_URL }),
+        });
   }
   return client;
 }
@@ -63,10 +73,12 @@ export async function verifyQStashSignature(request: Request, rawBody: string): 
   const signature = request.headers.get("upstash-signature");
   if (!signature) return false;
 
-  const receiver = new Receiver({
-    currentSigningKey: requireEnv("QSTASH_CURRENT_SIGNING_KEY"),
-    nextSigningKey: requireEnv("QSTASH_NEXT_SIGNING_KEY"),
-  });
+  const receiver = isQStashDevMode()
+    ? new Receiver({ devMode: true })
+    : new Receiver({
+        currentSigningKey: requireEnv("QSTASH_CURRENT_SIGNING_KEY"),
+        nextSigningKey: requireEnv("QSTASH_NEXT_SIGNING_KEY"),
+      });
 
   try {
     return await receiver.verify({

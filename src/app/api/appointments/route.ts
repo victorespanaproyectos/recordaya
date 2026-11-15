@@ -32,6 +32,10 @@ export async function POST(request: Request) {
 
   if (!isNonEmptyString(body.business_id)) return badRequest("Falta business_id");
   if (!isNonEmptyString(body.customer?.name)) return badRequest("Falta customer.name");
+  // "�" = bytes que no eran UTF-8 (ej. Invoke-RestMethod sin charset=utf-8): mejor rechazar que enviar "Espa�a".
+  if ([body.customer!.name, body.service, body.notes].some((v) => typeof v === "string" && v.includes("�"))) {
+    return badRequest("Texto con caracteres inválidos: envía el body en UTF-8 (Content-Type: application/json; charset=utf-8)");
+  }
   const phone = normalizePhone(String(body.customer?.phone ?? ""));
   if (phone.length < 8 || phone.length > 15) {
     return badRequest("customer.phone debe estar en formato internacional (ej. 59899123456)");
