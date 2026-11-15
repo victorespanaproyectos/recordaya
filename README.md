@@ -1,36 +1,97 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# RecordaYa
 
-## Getting Started
+Recordatorios de turnos por WhatsApp para negocios: envío automático 24 h y 2 h antes de cada turno, seguimiento de entregas y lecturas, y respuestas de los clientes, usando la **WhatsApp Cloud API** oficial de Meta.
 
-First, run the development server:
+> 🚧 En desarrollo — proyecto de portfolio.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+## Stack
+
+- **Next.js 16** (App Router) + **TypeScript**
+- **Supabase** (PostgreSQL)
+- **WhatsApp Cloud API** (Graph API v26.0) con plantillas aprobadas
+- Próximamente: Upstash QStash (envíos programados), Tailwind + shadcn/ui (panel), Vercel (deploy)
+
+## Arquitectura
+
+```
+src/
+├── app/api/
+│   ├── messages/test/route.ts      # POST: envía un recordatorio de prueba
+│   └── webhooks/whatsapp/route.ts  # GET: verificación · POST: estados y respuestas
+└── lib/
+    ├── env.ts                      # variables de entorno validadas
+    ├── auth/admin-key.ts           # protección de endpoints internos
+    ├── supabase/admin.ts           # cliente de Supabase (solo servidor)
+    └── whatsapp/
+        ├── client.ts               # sendTemplate() → Cloud API
+        ├── templates.ts            # nombres y variables de plantillas
+        ├── webhook.ts              # firma HMAC + tipos del payload
+        └── process-webhook.ts      # actualiza estados y guarda respuestas
+supabase/migrations/0001_init.sql   # esquema de la base de datos
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+**Flujo de un mensaje:** la app envía la plantilla → Meta devuelve un `wamid` → se guarda en `messages` → Meta notifica por webhook `sent → delivered → read` (o `failed`) → se actualiza el estado.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Puesta en marcha
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### 1. Variables de entorno
 
-## Learn More
+```bash
+cp .env.example .env.local
+```
 
-To learn more about Next.js, take a look at the following resources:
+Completa `.env.local` (ver comentarios en `.env.example`).
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### 2. Base de datos
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+En Supabase → **SQL Editor**, pega y ejecuta `supabase/migrations/0001_init.sql`.
 
-## Deploy on Vercel
+### 3. Ejecutar
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+```bash
+npm install
+npm run dev
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+### 4. Probar un envío
+
+PowerShell:
+
+```powershell
+$headers = @{ Authorization = "Bearer TU_ADMIN_API_KEY" }
+$body = @{
+  to      = "59899123456"
+  nombre  = "Victor"
+  fecha   = "lunes 17 de noviembre"
+  hora    = "15:30"
+  negocio = "Barbería Centro"
+} | ConvertTo-Json
+
+Invoke-RestMethod -Method Post -Uri http://localhost:3000/api/messages/test `
+  -Headers $headers -ContentType "application/json" -Body $body
+```
+
+### 5. Webhook (estados de entrega y respuestas)
+
+Meta necesita una URL pública. En desarrollo usa un túnel:
+
+```bash
+npx cloudflared tunnel --url http://localhost:3000
+```
+
+En **Meta for Developers → tu app → WhatsApp → Configuración → Webhook**:
+
+- URL de devolución de llamada: `https://<tu-tunel>/api/webhooks/whatsapp`
+- Token de verificación: el valor de `WHATSAPP_WEBHOOK_VERIFY_TOKEN`
+- Suscribirse al campo **messages**
+
+## Roadmap
+
+- [x] Envío de plantillas por Cloud API
+- [x] Webhook con verificación de firma y estados de mensajes
+- [x] Esquema de base de datos
+- [ ] Programación de recordatorios 24 h / 2 h (QStash)
+- [ ] Confirmar / reprogramar / cancelar desde la respuesta del cliente
+- [ ] Panel web: calendario, clientes, historial y métricas
+- [ ] Login multi-negocio
+- [ ] Deploy en Vercel + demo
