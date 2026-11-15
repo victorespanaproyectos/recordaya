@@ -10,7 +10,8 @@ Recordatorios de turnos por WhatsApp para negocios: envío automático 24 h y 2 
 - **Supabase** (PostgreSQL)
 - **WhatsApp Cloud API** (Graph API v26.0) con plantillas aprobadas
 - **Upstash QStash** (envíos programados)
-- Próximamente: Tailwind + shadcn/ui (panel), Vercel (deploy)
+- **Vercel** (deploy) · producción: https://recordaya.vercel.app
+- Próximamente: Tailwind + shadcn/ui (panel)
 
 ## Arquitectura
 
@@ -148,6 +149,15 @@ El turno se identifica por el mensaje citado (si responde a uno) o, si no, por s
 
 5. (Opcional) En QStash → **Schedules**, crea uno con destino `APP_URL/api/jobs/dispatch` y cron `0 * * * *`.
 
+## Deploy en Vercel
+
+1. Importa el repo en Vercel (preset Next.js).
+2. En **Environment Variables** pega las variables de `.env.example` con valores de producción (`QSTASH_DEV=false`, sin `APP_URL`: se toma la URL de producción de Vercel).
+3. En **Integrations** agrega **Upstash QStash** (plan Free): crea `QSTASH_TOKEN`, `QSTASH_URL` y las dos signing keys automáticamente.
+4. En Meta, cambia la URL del webhook a `https://<tu-proyecto>.vercel.app/api/webhooks/whatsapp` (hay que volver a escribir el token de verificación).
+
+Cada push a `main` despliega automáticamente.
+
 ## Roadmap
 
 - [x] Envío de plantillas por Cloud API
@@ -158,4 +168,6 @@ El turno se identifica por el mensaje citado (si responde a uno) o, si no, por s
 - [ ] Reprogramar desde WhatsApp
 - [ ] Panel web: calendario, clientes, historial y métricas
 - [ ] Login multi-negocio
-- [ ] Deploy en Vercel + demo
+- [x] Deploy en Vercel
+- [ ] Publicar la app de Meta (eventos reales: entregado, leído, respuestas)
+- [ ] Demo pública
