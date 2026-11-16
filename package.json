@@ -6,7 +6,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "simulate:reply": "node --env-file=.env.local scripts/simulate-reply.mjs",
+    "seed:demo": "node --env-file=.env.local scripts/seed-demo.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.119.0",

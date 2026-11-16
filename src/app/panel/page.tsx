@@ -67,7 +67,7 @@ async function Dashboard({ searchParams }: { searchParams: PageProps<"/panel">["
         <Stats timeZone={tz} />
       </Suspense>
 
-      <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_340px]">
+      <div className="grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,1fr)_340px]">
         <section aria-labelledby="agenda-title">
           <h2 id="agenda-title" className="sr-only">
             Turnos
@@ -387,7 +387,7 @@ function DashboardSkeleton() {
         <div className={cn(pulse, "h-10 w-36")} />
       </div>
       <StatsSkeleton />
-      <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_340px]">
+      <div className="grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,1fr)_340px]">
         <AgendaSkeleton />
         <ActivitySkeleton />
       </div>

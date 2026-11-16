@@ -2,7 +2,31 @@
 
 Recordatorios de turnos por WhatsApp para negocios: envío automático 24 h y 2 h antes de cada turno, seguimiento de entregas y lecturas, y respuestas de los clientes, usando la **WhatsApp Cloud API** oficial de Meta.
 
-> 🚧 En desarrollo — proyecto de portfolio.
+**🔗 Demo en vivo: [recordaya.vercel.app](https://recordaya.vercel.app)**
+
+> Proyecto de portfolio, funcionando en producción con WhatsApp real. El panel está protegido con contraseña: si quieres probarlo, pídemela. Los turnos que se ven son datos de demostración con números ficticios.
+
+![Panel de RecordaYa: agenda con métricas y actividad reciente](docs/screenshots/panel.png)
+
+## Capturas
+
+| Landing | Detalle del turno con la conversación de WhatsApp |
+| --- | --- |
+| ![Landing pública](docs/screenshots/landing.png) | ![Detalle de un turno: mensajes enviados, leídos y respuesta del cliente](docs/screenshots/detalle.png) |
+| **Nuevo turno con vista previa del mensaje** | **Modo claro** |
+| ![Formulario de nuevo turno con vista previa del mensaje de WhatsApp](docs/screenshots/nuevo-turno.png) | ![Panel en modo claro](docs/screenshots/panel-claro.png) |
+
+<p align="center">
+  <img src="docs/screenshots/movil.png" alt="Panel en el móvil" width="280" />
+  &nbsp;&nbsp;
+  <img src="docs/screenshots/login.png" alt="Pantalla de acceso" width="520" />
+</p>
+
+## Qué hace
+
+1. **Cargas el turno** en el panel: el cliente recibe la confirmación por WhatsApp al instante.
+2. **Se recuerda solo:** 24 h y 2 h antes sale un recordatorio automático (Upstash QStash).
+3. **El cliente responde** «1» para confirmar o «2» para cancelar, y la agenda se actualiza sola. El panel muestra cada mensaje con su estado real: enviado, entregado (✓✓) o leído (✓✓ azul).
 
 ## Stack
 
@@ -149,6 +173,34 @@ El turno se identifica por el mensaje citado (si responde a uno) o, si no, por s
 
 5. (Opcional) En QStash → **Schedules**, crea uno con destino `APP_URL/api/jobs/dispatch` y cron `0 * * * *`.
 
+## Entornos: desarrollo y producción
+
+| | Local (`npm run dev`) | Producción (Vercel) |
+| --- | --- | --- |
+| Base de datos | Proyecto Supabase **recordaya-dev** | Proyecto Supabase **RecordaYA** |
+| Variables | `.env.local` | Environment Variables de Vercel |
+| QStash | Servidor local (`QSTASH_DEV=true`) | Upstash QStash (integración de Vercel) |
+| Webhook de Meta | — | `https://recordaya.vercel.app/api/webhooks/whatsapp` |
+
+Las pruebas locales no tocan los datos de producción. Para crear la base de desarrollo, ejecuta las migraciones de `supabase/migrations/` en un segundo proyecto de Supabase y pon su URL y secret key en `.env.local`.
+
+**Respuestas de clientes en local:** Meta solo admite un webhook, que apunta a producción, así que las respuestas reales desde WhatsApp nunca llegan al servidor local. Para probar confirmar o cancelar en local, simúlalas (el evento va firmado con `WHATSAPP_APP_SECRET`, igual que los de Meta):
+
+```bash
+npm run simulate:reply -- 59899123456 1
+npm run simulate:reply -- 59899123456 "No puedo, cancelo"
+```
+
+**Datos de demostración:** para llenar el panel con 20 turnos de ejemplo (pasados, de hoy y próximos, con mensajes, estados y respuestas), sin enviar ningún WhatsApp:
+
+```bash
+npm run seed:demo -- --reset --backup backups --yes
+```
+
+`--reset` borra turnos, clientes y mensajes (conserva los negocios) y `--backup` guarda antes un JSON en `backups/` (ignorado por git). Usa `.env.local`, es decir, la base de desarrollo.
+
+Ojo: los envíos de WhatsApp desde local son reales. Con el número de prueba de Meta solo llegan a los destinatarios autorizados; con un número ficticio el envío falla y queda registrado como `failed`.
+
 ## Panel web
 
 - `/` — landing pública del proyecto.
@@ -186,4 +238,4 @@ Cada push a `main` despliega automáticamente.
 - [ ] Login multi-negocio
 - [x] Deploy en Vercel
 - [x] Publicar la app de Meta (eventos reales: entregado, leído, respuestas)
-- [ ] Demo pública
+- [x] Demo pública con datos de ejemplo (`npm run seed:demo`)
