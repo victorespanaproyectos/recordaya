@@ -6,9 +6,15 @@ Recordatorios de turnos por WhatsApp para negocios: envío automático 24 h y 2 
 
 > Proyecto de portfolio, funcionando en producción con WhatsApp real. El panel está protegido con contraseña: si quieres probarlo, pídemela. Los turnos que se ven son datos de demostración con números ficticios.
 
-![Panel de RecordaYa: agenda con métricas y actividad reciente](docs/screenshots/panel.png)
+### ▶ Video demo (1:44)
+
+[![Ver el video demo de RecordaYa](docs/demo/recordaya-demo-poster.jpg)](docs/demo/recordaya-demo.mp4)
+
+Recorrido completo: landing, acceso al panel, alta de un turno con vista previa del mensaje, respuesta «1» del cliente que lo confirma solo y la conversación con estados de entrega y lectura.
 
 ## Capturas
+
+![Panel de RecordaYa: agenda con métricas y actividad reciente](docs/screenshots/panel.png)
 
 | Landing | Detalle del turno con la conversación de WhatsApp |
 | --- | --- |
