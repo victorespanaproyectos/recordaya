@@ -59,6 +59,36 @@ export async function scheduleReminder(messageId: string, at: Date): Promise<str
   return res.messageId;
 }
 
+export interface PublishJobOptions {
+  /** Demora en segundos (QStash la trabaja en segundos enteros: se redondea hacia arriba). */
+  delaySeconds?: number;
+  /** QStash descarta publicaciones repetidas con el mismo id. */
+  deduplicationId?: string;
+  retries?: number;
+}
+
+/**
+ * Encola un job genérico: QStash llamará a `path` (de esta app) con `body` firmado.
+ * Devuelve el id de QStash.
+ */
+export async function publishJob<T extends Record<string, unknown> | unknown[]>(
+  path: string,
+  body: T,
+  options: PublishJobOptions = {},
+): Promise<string> {
+  if (!path.startsWith("/api/jobs/")) throw new Error(`Ruta de job no permitida: ${path}`);
+  const res = await getClient().publishJSON<T>({
+    url: `${getAppUrl()}${path}`,
+    body,
+    ...(options.delaySeconds !== undefined && options.delaySeconds > 0 && { delay: Math.ceil(options.delaySeconds) }),
+    ...(options.deduplicationId && { deduplicationId: options.deduplicationId }),
+    retries: options.retries ?? 3,
+    label: path.split("/").pop(),
+  });
+  if (!("messageId" in res)) throw new Error("QStash no devolvió messageId");
+  return res.messageId;
+}
+
 /** Cancela un envío programado. Si ya se entregó o no existe, no hace nada. */
 export async function cancelScheduled(scheduleId: string): Promise<void> {
   try {

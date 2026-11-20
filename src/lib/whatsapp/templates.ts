@@ -94,3 +94,16 @@ export interface ReprogramarVars {
 }
 export const reprogramarParams = (v: ReprogramarVars) =>
   params([["nombre", v.nombre], ["servicio", v.servicio], ["fecha", v.fecha], ["negocio", v.negocio]]);
+
+// ── Plantilla de reapertura (D-08) ──────────────────────────
+// Nombre en WHATSAPP_REOPEN_TEMPLATE (vacío = deshabilitada). Texto sugerido, categoría "utility":
+// "Hola {{1}}, te escribimos de {{2}} por tu consulta. Responde a este mensaje para continuar."
+export interface RetomarConversacionVars {
+  nombre: string;
+  negocio: string;
+}
+export const retomarConversacionParams = (v: RetomarConversacionVars) =>
+  params([["nombre", v.nombre], ["negocio", v.negocio]]);
+
+/** Nombre de la plantilla de reapertura, o `null` si no está configurada. */
+export const reopenTemplateName = (): string | null => process.env.WHATSAPP_REOPEN_TEMPLATE?.trim() || null;

@@ -1,10 +1,11 @@
-import { handleCustomerReply } from "@/lib/appointments/replies";
+import { routeInboundMessage } from "@/lib/chatbot/router";
 import { getSupabaseAdmin, isSupabaseConfigured } from "@/lib/supabase/admin";
 import {
   incomingText,
   type WaIncomingMessage,
   type WaStatusUpdate,
   type WaWebhookPayload,
+  type WaWebhookValue,
 } from "./webhook";
 
 /** Orden de los estados: nunca "bajamos" de read a delivered si llegan desordenados. */
@@ -39,7 +40,7 @@ export async function processWebhook(payload: WaWebhookPayload): Promise<void> {
       const { statuses = [], messages = [] } = change.value;
 
       for (const status of statuses) await applyStatus(status);
-      for (const message of messages) await saveIncoming(message);
+      for (const message of messages) await saveIncoming(message, change.value);
     }
   }
 }
@@ -54,7 +55,11 @@ async function applyStatus(update: WaStatusUpdate): Promise<void> {
     .maybeSingle();
 
   if (error) throw error;
-  if (!current) return; // mensaje enviado fuera de la app (ej. desde el panel de Meta)
+  if (!current) {
+    // No es un recordatorio: puede ser una respuesta del chatbot o de una persona del equipo.
+    await applyChatbotStatus(update);
+    return;
+  }
 
   const isNewer = STATUS_RANK[update.status] > (STATUS_RANK[current.status] ?? 0);
   if (!isNewer) return;
@@ -72,7 +77,31 @@ async function applyStatus(update: WaStatusUpdate): Promise<void> {
   if (updateError) throw updateError;
 }
 
-async function saveIncoming(message: WaIncomingMessage): Promise<void> {
+/** Estados de los mensajes de las conversaciones (mismo ranking y columnas que los recordatorios). */
+async function applyChatbotStatus(update: WaStatusUpdate): Promise<void> {
+  const db = getSupabaseAdmin();
+  const { data: current, error } = await db
+    .from("conversation_messages")
+    .select("id, status")
+    .eq("wa_message_id", update.id)
+    .maybeSingle();
+  if (error) throw error;
+  if (!current) return; // enviado fuera de la app (ej. desde el panel de Meta)
+
+  if (!(STATUS_RANK[update.status] > (STATUS_RANK[current.status] ?? 0))) return;
+  const at = new Date(Number(update.timestamp) * 1000).toISOString();
+  const { error: updateError } = await db
+    .from("conversation_messages")
+    .update({
+      status: update.status,
+      [STATUS_TIMESTAMP_COLUMN[update.status]]: at,
+      ...(update.errors && { error: update.errors }),
+    })
+    .eq("id", current.id);
+  if (updateError) throw updateError;
+}
+
+async function saveIncoming(message: WaIncomingMessage, value: WaWebhookValue): Promise<void> {
   const db = getSupabaseAdmin();
   const { data, error } = await db.from("inbound_messages").upsert(
     {
@@ -92,10 +121,16 @@ async function saveIncoming(message: WaIncomingMessage): Promise<void> {
   const inserted = data?.[0];
   if (!inserted) return;
 
-  await handleCustomerReply({
+  await routeInboundMessage({
     inboundId: inserted.id,
-    fromPhone: message.from,
+    waMessageId: message.id,
+    from: message.from,
     text: incomingText(message),
     replyTo: message.context?.id ?? null,
+    buttonId: message.interactive?.button_reply?.id ?? null,
+    type: message.type,
+    phoneNumberId: value.metadata?.phone_number_id ?? null,
+    profileName: value.contacts?.find((c) => c.wa_id === message.from)?.profile?.name ?? null,
+    receivedAt: new Date(Number(message.timestamp) * 1000),
   });
 }

@@ -87,6 +87,33 @@ export async function sendText(to: string, body: string): Promise<SendTemplateRe
   });
 }
 
+export interface InteractiveButton {
+  /** Identificador que vuelve en el webhook (`interactive.button_reply.id`). */
+  id: string;
+  /** Texto del botón: WhatsApp admite hasta 20 caracteres. */
+  title: string;
+}
+
+/**
+ * Mensaje con hasta 3 botones de respuesta rápida. Como el texto libre, solo funciona dentro de la
+ * ventana de 24 h desde el último mensaje del cliente.
+ */
+export async function sendInteractiveButtons(to: string, body: string, buttons: InteractiveButton[]): Promise<SendTemplateResult> {
+  if (buttons.length < 1 || buttons.length > 3) throw new Error("WhatsApp admite de 1 a 3 botones");
+  if (buttons.some((b) => b.title.length > 20 || b.title.length === 0)) throw new Error("El texto de un botón admite de 1 a 20 caracteres");
+  return postMessage({
+    messaging_product: "whatsapp",
+    recipient_type: "individual",
+    to: normalizePhone(to),
+    type: "interactive",
+    interactive: {
+      type: "button",
+      body: { text: body },
+      action: { buttons: buttons.map((b) => ({ type: "reply", reply: { id: b.id, title: b.title } })) },
+    },
+  });
+}
+
 async function postMessage(body: unknown): Promise<SendTemplateResult> {
   const config = getWhatsAppConfig();
   const res = await fetch(
