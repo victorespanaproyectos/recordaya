@@ -6,7 +6,7 @@ import { Suspense } from "react";
 import { MessageTicks } from "@/components/message-ticks";
 import { StatusBadge } from "@/components/status-badge";
 import { formatFecha, formatHora, timeAgo } from "@/lib/dates";
-import { requirePanelSession } from "@/lib/panel/auth";
+import { requireMember } from "@/lib/auth/session";
 import { getAppointmentDetail, timelineAt, type AppointmentDetail } from "@/lib/panel/data";
 import { buttonStyles, capitalizeFirst, cn, formatPhone, INTENT_LABEL, initials, MESSAGE_KIND, MESSAGE_STATUS } from "@/lib/panel/ui";
 import { AppointmentActions } from "../../appointment-actions";
@@ -30,10 +30,10 @@ export default function AppointmentPage({ params }: PageProps<"/panel/turnos/[id
 }
 
 async function Detail({ params }: { params: PageProps<"/panel/turnos/[id]">["params"] }) {
-  await requirePanelSession();
+  const member = await requireMember("operator");
   const { id } = await params;
   if (!UUID_RE.test(id)) notFound();
-  const appt = await getAppointmentDetail(id);
+  const appt = await getAppointmentDetail(id, member.businessId);
   if (!appt) notFound();
 
   const tz = appt.business.timezone;

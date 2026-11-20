@@ -44,16 +44,18 @@ export type AgendaView = "upcoming" | "past" | "cancelled";
 
 const ACTIVE: AppointmentStatus[] = ["scheduled", "confirmed", "rescheduled"];
 
-export async function getBusinesses(): Promise<Business[]> {
+/** Solo el negocio del miembro: el panel nunca lista negocios ajenos. */
+export async function getBusinesses(businessId: string): Promise<Business[]> {
   const { data, error } = await getSupabaseAdmin()
     .from("businesses")
     .select("id, name, timezone, address")
+    .eq("id", businessId)
     .order("created_at");
   if (error) throw error;
   return data;
 }
 
-export async function getAgenda(view: AgendaView): Promise<AgendaItem[]> {
+export async function getAgenda(view: AgendaView, businessId: string): Promise<AgendaItem[]> {
   const now = new Date().toISOString();
   let query = getSupabaseAdmin()
     .from("appointments")
@@ -62,7 +64,8 @@ export async function getAgenda(view: AgendaView): Promise<AgendaItem[]> {
        customer:customers ( name, phone ),
        business:businesses ( name, timezone ),
        messages ( kind, status, scheduled_for )`,
-    );
+    )
+    .eq("business_id", businessId);
 
   if (view === "upcoming") {
     query = query.gte("starts_at", now).in("status", ACTIVE).order("starts_at").limit(100);
@@ -86,7 +89,7 @@ export interface PanelStats {
   pendingReminders: number;
 }
 
-export async function getStats(timeZone: string): Promise<PanelStats> {
+export async function getStats(timeZone: string, businessId: string): Promise<PanelStats> {
   const db = getSupabaseAdmin();
   const now = new Date();
   const todayStart = startOfZonedDay(now, timeZone);
@@ -96,23 +99,24 @@ export async function getStats(timeZone: string): Promise<PanelStats> {
   const ago7 = new Date(now.getTime() - 7 * DAY_MS);
 
   const count = { count: "exact" as const, head: true };
+  const scoped = (table: "appointments" | "messages") => db.from(table).select("id", count).eq("business_id", businessId);
 
   const [today, next7, decided, confirmed, sent, read, pending] = await Promise.all([
-    db.from("appointments").select("id", count)
+    scoped("appointments")
       .gte("starts_at", todayStart.toISOString()).lt("starts_at", tomorrowStart.toISOString())
       .in("status", [...ACTIVE, "completed"]),
-    db.from("appointments").select("id", count)
+    scoped("appointments")
       .gte("starts_at", now.toISOString()).lt("starts_at", in7.toISOString()).in("status", ACTIVE),
     // Turnos de los últimos 30 días en los que el cliente ya "decidió" algo o se cerró.
-    db.from("appointments").select("id", count)
+    scoped("appointments")
       .gte("created_at", ago30.toISOString()).neq("status", "scheduled"),
-    db.from("appointments").select("id", count)
+    scoped("appointments")
       .gte("created_at", ago30.toISOString()).in("status", ["confirmed", "completed"]),
-    db.from("messages").select("id", count)
+    scoped("messages")
       .gte("created_at", ago7.toISOString()).in("status", ["accepted", "sent", "delivered", "read"]),
-    db.from("messages").select("id", count)
+    scoped("messages")
       .gte("created_at", ago7.toISOString()).eq("status", "read"),
-    db.from("messages").select("id", count).eq("status", "queued"),
+    scoped("messages").eq("status", "queued"),
   ]);
 
   for (const r of [today, next7, decided, confirmed, sent, read, pending]) if (r.error) throw r.error;
@@ -141,12 +145,13 @@ export interface ActivityItem {
 }
 
 /** Últimas respuestas de clientes y envíos fallidos. */
-export async function getRecentActivity(limit = 8): Promise<ActivityItem[]> {
+export async function getRecentActivity(businessId: string, limit = 8): Promise<ActivityItem[]> {
   const db = getSupabaseAdmin();
 
   const [inbound, failed] = await Promise.all([
     db.from("inbound_messages")
-      .select("id, body, intent, received_at, appointment_id, appointment:appointments ( customer:customers ( name ) )")
+      .select("id, body, intent, received_at, appointment_id, appointment:appointments!inner ( business_id, customer:customers ( name ) )")
+      .eq("appointment.business_id", businessId)
       .not("appointment_id", "is", null)
       .order("received_at", { ascending: false })
       .limit(limit)
@@ -156,6 +161,7 @@ export async function getRecentActivity(limit = 8): Promise<ActivityItem[]> {
       }[]>(),
     db.from("messages")
       .select("id, kind, failed_at, appointment_id, error, appointment:appointments ( customer:customers ( name ) )")
+      .eq("business_id", businessId)
       .eq("status", "failed")
       .order("failed_at", { ascending: false })
       .limit(limit)
@@ -222,7 +228,7 @@ export interface AppointmentDetail extends Omit<AgendaItem, "messages" | "busine
   timeline: (TimelineMessage | TimelineReply)[];
 }
 
-export async function getAppointmentDetail(id: string): Promise<AppointmentDetail | null> {
+export async function getAppointmentDetail(id: string, businessId: string): Promise<AppointmentDetail | null> {
   const db = getSupabaseAdmin();
 
   const { data: appt, error } = await db
@@ -235,6 +241,7 @@ export async function getAppointmentDetail(id: string): Promise<AppointmentDetai
                   sent_at, delivered_at, read_at, failed_at, error )`,
     )
     .eq("id", id)
+    .eq("business_id", businessId)
     .maybeSingle<Omit<AppointmentDetail, "timeline"> & { messages: Omit<TimelineMessage, "direction">[] }>();
   // (messages se separa abajo y se une con las respuestas en una sola línea de tiempo)
   if (error) throw error;
