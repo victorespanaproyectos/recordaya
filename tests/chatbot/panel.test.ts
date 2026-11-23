@@ -193,9 +193,11 @@ describe.skipIf(!hasDb)("panel", () => {
         expect(await find({ channel: "web" })).toEqual([]);
         expect(await find({ channel: "whatsapp" })).toHaveLength(2);
         expect(await find({ operatorId: op.id })).toEqual(["Juan Gómez"]);
-        const today = new Date().toISOString().slice(0, 10);
-        expect(await find({ from: today })).toEqual(["María Pérez"]);
-        expect(await find({ to: new Date(Date.now() - 2 * 86_400_000).toISOString().slice(0, 10) })).toEqual(["Juan Gómez"]);
+        // Los filtros de fecha se interpretan en la zona horaria del negocio (Montevideo), no en UTC: la prueba
+        // calcula los días igual, o fallaba entre las 21:00 y las 24:00 locales (ya es «mañana» en UTC).
+        const dayInBusinessZone = (ms: number) => new Date(ms).toLocaleDateString("en-CA", { timeZone: "America/Montevideo" });
+        expect(await find({ from: dayInBusinessZone(Date.now()) })).toEqual(["María Pérez"]);
+        expect(await find({ to: dayInBusinessZone(Date.now() - 2 * 86_400_000) })).toEqual(["Juan Gómez"]);
         expect(x.id).toBeTruthy();
       } finally {
         await cleanup(fresh.id);

@@ -16,17 +16,32 @@ import { Composer } from "./composer";
 import { ContactPanel } from "./contact-panel";
 import { EraseContact } from "./erase-contact";
 import { ConversationTimeline } from "./conversation-timeline";
+import { InboxView } from "../inbox-view";
 
 export const metadata: Metadata = { title: "Conversación · RecordaYa" };
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-export default function ConversationPage({ params }: PageProps<"/panel/conversaciones/[id]">) {
+export default function ConversationPage({ params, searchParams }: PageProps<"/panel/conversaciones/[id]">) {
+  const fallback = <div className="h-96 animate-pulse rounded-2xl bg-surface-2" />;
   return (
-    <Suspense fallback={<div className="h-96 animate-pulse rounded-2xl bg-surface-2" />}>
-      <Detail params={params} />
-    </Suspense>
+    // Escritorio: lista de 360 px + detalle (06 §18.2). Móvil: solo el detalle, con el enlace para volver a la lista.
+    <div className="lg:grid lg:grid-cols-[360px_minmax(0,1fr)] lg:gap-8">
+      <aside className="hidden lg:block">
+        <Suspense fallback={fallback}>
+          <ListColumn params={params} searchParams={searchParams} />
+        </Suspense>
+      </aside>
+      <Suspense fallback={fallback}>
+        <Detail params={params} />
+      </Suspense>
+    </div>
   );
+}
+
+async function ListColumn({ params, searchParams }: Pick<PageProps<"/panel/conversaciones/[id]">, "params" | "searchParams">) {
+  const { id } = await params;
+  return <InboxView searchParams={searchParams} selectedId={id} />;
 }
 
 async function Detail({ params }: { params: PageProps<"/panel/conversaciones/[id]">["params"] }) {
@@ -48,7 +63,7 @@ async function Detail({ params }: { params: PageProps<"/panel/conversaciones/[id
     <div className="space-y-6">
       <AutoRefresh active />
       <div className="animate-rise space-y-3">
-        <Link href="/panel/conversaciones" className="inline-flex items-center gap-1 text-sm text-muted hover:text-fg">
+        <Link href="/panel/conversaciones" className="inline-flex items-center gap-1 text-sm text-muted hover:text-fg lg:hidden">
           <ArrowLeft className="size-4" />
           Conversaciones
         </Link>
@@ -69,7 +84,7 @@ async function Detail({ params }: { params: PageProps<"/panel/conversaciones/[id
         )}
       </div>
 
-      <div className="grid gap-8 lg:grid-cols-[1fr_20rem]">
+      <div className="grid gap-8 xl:grid-cols-[1fr_20rem]">
         <div className="space-y-4">
           {detail.timeline.length === 0 ? <p className="text-sm text-muted">Todavía no hay mensajes.</p> : <ConversationTimeline entries={detail.timeline} timeZone={business?.timezone ?? "America/Montevideo"} />}
           <div className="sticky bottom-0 bg-bg pt-3">
