@@ -88,7 +88,7 @@ Completa `.env.local` (ver comentarios en `.env.example`).
 
 ### 2. Base de datos
 
-En Supabase → **SQL Editor**, pega y ejecuta en orden los archivos de `supabase/migrations/` (`0001_init.sql`, `0002_reminders.sql`, `0003_service_role_grants.sql`, `0004_customer_replies.sql`). Las migraciones del chatbot (`0005` a `0011`, aditivas) se aplican igual y cada una tiene su reversión en `supabase/migrations/down/`; el chatbot requiere pgvector (`create extension vector`).
+En Supabase → **SQL Editor**, pega y ejecuta en orden los archivos de `supabase/migrations/` (`0001_init.sql`, `0002_reminders.sql`, `0003_service_role_grants.sql`, `0004_customer_replies.sql`). Las migraciones del chatbot (`0005` a `0012`, aditivas) se aplican igual y cada una tiene su reversión en `supabase/migrations/down/`; el chatbot requiere pgvector (`create extension vector`).
 
 ### 3. Ejecutar
 
@@ -244,7 +244,11 @@ Para producción hay que programar en QStash el mantenimiento de conversaciones 
 curl -X POST https://TU-DOMINIO/api/jobs/conversations-maintenance -H "Authorization: Bearer $ADMIN_API_KEY"
 ```
 
-Schedule sugerido: cada 10 minutos (`*/10 * * * *`) apuntando a esa URL.
+Schedule sugerido: cada 10 minutos (`*/10 * * * *`) apuntando a esa URL. El mismo job aplica la retención de datos: webhooks crudos 30 días, conversaciones y preguntas sin respuesta 12 meses.
+
+**Variables del chatbot** (ver `.env.example`): `CHATBOT_ENABLED`, `CHATBOT_ALLOWLIST_PHONES`, `GEMINI_API_KEY`, `CHATBOT_ALLOWED_MODELS`, `CHATBOT_DEFAULT_MODEL`, `VOYAGE_API_KEY`, `CHATBOT_PROMPT_CANARY`, `AUDIT_IP_SALT`, `WHATSAPP_REOPEN_TEMPLATE`. Generación con Gemini (capa gratuita) y embeddings con Voyage `voyage-4-lite`; ambos se llaman por REST. Las pruebas usan siempre proveedores falsos.
+
+**Seguridad y privacidad:** el login con contraseña compartida se bloquea tras 10 intentos fallidos por IP en 15 minutos; el propietario puede borrar todos los datos de un contacto desde el detalle de la conversación; las acciones sensibles quedan en `audit_log` con el hash de la IP. Más detalle en `docs/chatbot/07-seguridad.md` y `docs/chatbot/11-revision-fase-12.md`. Operación diaria: `docs/chatbot/RUNBOOK.md`.
 
 ## Deploy en Vercel
 

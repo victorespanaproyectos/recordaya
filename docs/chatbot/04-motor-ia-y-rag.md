@@ -2,6 +2,8 @@
 
 [← Índice](RECORDAYA_CHATBOT_TECHNICAL_SPECIFICATION.md)
 
+> **Revisión 2026-11-19 (demo con capas gratuitas, D-03/D-04 revisadas):** lo implementado usa **Gemini por REST** (capa gratuita) para generación y **Voyage `voyage-4-lite`** (1024 dimensiones) para embeddings. Las comparativas y notas de Anthropic de abajo se conservan como referencia de un adaptador opcional futuro: **no existe `AnthropicProvider` en el código** ni se usa `@anthropic-ai/sdk`. Los ids de modelo de Gemini no están fijados en el código: se definen con `CHATBOT_ALLOWED_MODELS` y `CHATBOT_DEFAULT_MODEL`.
+
 Todo es **[PROPUESTA]**. Precios de Anthropic tomados de la referencia oficial de modelos vigente al 2026-11-03; precios de terceros marcados **[PENDIENTE]** hasta verificarlos en sus sitios.
 
 ---
@@ -22,13 +24,13 @@ Todo es **[PROPUESTA]**. Precios de Anthropic tomados de la referencia oficial d
 | Embeddings propios | **No** (requiere otro proveedor) | Sí | Sí | Sí |
 | Riesgo de dependencia | Mitigado por la capa de abstracción | idem | idem | idem |
 
-**Recomendación:** generación con **Claude** detrás de `LlmProvider`. Modelo por defecto `claude-opus-5-5` con esfuerzo `low` (D-03); cada negocio puede elegir en su configuración entre `claude-opus-5-5`, `claude-sonnet-5-5` y `claude-haiku-5-5` (lista blanca en `src/lib/chatbot/config.ts`). La elección afecta directamente el costo (ver §24); la decisión final es del responsable del producto.
+**Recomendación original (reemplazada por D-03 revisada):** generación con **Claude** detrás de `LlmProvider`. Modelo por defecto `claude-opus-5-5` con esfuerzo `low` (D-03); cada negocio puede elegir en su configuración entre `claude-opus-5-5`, `claude-sonnet-5-5` y `claude-haiku-5-5` (lista blanca en `src/lib/chatbot/config.ts`). La elección afecta directamente el costo (ver §24); la decisión final es del responsable del producto.
 
 ### 1.2 Embeddings
 
 | Opción | Dimensiones | Multilingüe | Costo | Notas |
 | --- | --- | --- | --- | --- |
-| **Voyage AI `voyage-3.5-lite`** | 1024 (configurable) | Sí | [PENDIENTE] del orden de centavos por millón de tokens | Recomendado por Anthropic para RAG; tipos `query`/`document` |
+| **Voyage AI `voyage-4-lite`** (elegido, D-04 revisada) | 1024 (`output_dimension`) | Sí | 200 M de tokens gratis por cuenta según su página de precios [verificar vigencia] | Tipos `query`/`document`; se llama por REST, sin SDK |
 | OpenAI `text-embedding-3-small` | 1536 (reducible) | Sí | [PENDIENTE] | Alternativa sólida |
 | Supabase `gte-small` en Edge Functions | 384 | Limitado (orientado a inglés) | Incluido | Menor calidad en español |
 
@@ -66,9 +68,9 @@ export interface EmbeddingProvider {
 }
 ```
 
-`registry.ts` elige implementación por prefijo del modelo (`claude-*` → `AnthropicProvider`) y por `EMBEDDINGS_PROVIDER`. `fake.ts` implementa ambas interfaces con respuestas deterministas para pruebas. **Regla:** fuera de `providers/` está prohibido importar `@anthropic-ai/sdk` o el SDK de embeddings (regla ESLint `no-restricted-imports`).
+`registry.ts` elige implementación por prefijo del modelo (`gemini-*` → `GeminiProvider`, `fake*` → falso) y por `EMBEDDINGS_PROVIDER` (`voyage` por defecto, `fake` en pruebas). Los dos adaptadores reales usan `fetch` (REST), sin SDK. `fake.ts` implementa ambas interfaces con respuestas deterministas para pruebas. **Regla:** fuera de `providers/` está prohibido importar `@anthropic-ai/sdk` o el SDK de embeddings (regla ESLint `no-restricted-imports`).
 
-Notas para el adaptador de Anthropic (verificar contra la documentación del SDK al implementar, T-06.2):
+Notas para un eventual adaptador de Anthropic (**no implementado**; verificar contra la documentación del SDK al implementar, T-06.2):
 
 - Cliente `new Anthropic()` (lee `ANTHROPIC_API_KEY`), `timeout` en **milisegundos** en TypeScript, `maxRetries: 2`.
 - Salida estructurada con `client.messages.parse({ …, output_config: { format: zodOutputFormat(schema) } })`. En los modelos actuales **no** se usa `tool_choice` forzado (devuelve 400) ni *prefill* de asistente.

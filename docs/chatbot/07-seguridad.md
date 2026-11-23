@@ -53,7 +53,7 @@
 
 ## 19.7 Credenciales
 
-- Nuevas claves (`ANTHROPIC_API_KEY`, `VOYAGE_API_KEY`, `CHATBOT_PROMPT_CANARY`, `AUDIT_IP_SALT`) solo en Vercel (Production/Preview separados) y `.env.local`; nunca en el repositorio (`.gitignore` ya cubre `.env*` [HECHO]).
+- Nuevas claves (`GEMINI_API_KEY`, `VOYAGE_API_KEY`, `CHATBOT_PROMPT_CANARY`, `AUDIT_IP_SALT`) solo en Vercel (Production/Preview separados) y `.env.local`; nunca en el repositorio (`.gitignore` ya cubre `.env*` [HECHO]).
 - Claves de IA con límite de gasto configurado en la consola del proveedor (segunda barrera además de los topes internos).
 - El token de WhatsApp sigue siendo global; un futuro multi-número requerirá cifrar tokens por negocio (fuera de alcance).
 - Rotación documentada en el runbook (§23).

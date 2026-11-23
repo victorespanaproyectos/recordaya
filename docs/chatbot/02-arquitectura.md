@@ -25,7 +25,7 @@ Todo este documento es **[PROPUESTA]**, salvo donde se indique **[HECHO]**.
 | Conversations | Contactos, conversaciones, mensajes, máquina de estados, eventos | `src/lib/chatbot/conversations/` |
 | Engine | Orquesta un turno de IA: contexto, recuperación, llamada, validación, guardas, envío | `src/lib/chatbot/engine/` |
 | RAG | Extracción, fragmentación, embeddings, ingesta, recuperación | `src/lib/chatbot/rag/` |
-| Providers | Adaptadores de IA (Anthropic, Voyage; otros opcionales) | `src/lib/chatbot/providers/` |
+| Providers | Adaptadores de IA (Gemini, Voyage; otros opcionales) | `src/lib/chatbot/providers/` |
 | Handoff | Oferta, confirmación, cola, toma, horarios humanos | `src/lib/chatbot/conversations/handoff.ts`, `hours.ts` |
 | Usage | Medición de tokens y costos, topes | `src/lib/chatbot/usage/` |
 | Channels | Envío por canal (WhatsApp ahora, web en fase 2) | `src/lib/chatbot/channels/` |
@@ -55,7 +55,7 @@ flowchart LR
   V <--> S[(Supabase<br/>Postgres + pgvector<br/>Storage · Auth)]
   V <--> Q[Upstash QStash]
   Q -- jobs firmados --> V
-  V --> A[Anthropic API<br/>generación]
+  V --> A[Gemini API<br/>generación]
   V --> E[Voyage AI<br/>embeddings]
   O[Operadores / admins] --> P
 ```
@@ -93,7 +93,7 @@ flowchart TB
 
 ### 8.3 Despliegue
 
-Igual que hoy: un proyecto Vercel (deploy en push a `main`), dos proyectos Supabase (`recordaya-dev`, `RecordaYA`), QStash vía integración de Vercel. Nuevos: claves de Anthropic y Voyage en *Environment Variables*, bucket privado `knowledge` en Supabase Storage, extensión `vector`, schedule de QStash para mantenimiento.
+Igual que hoy: un proyecto Vercel (deploy en push a `main`), dos proyectos Supabase (`recordaya-dev`, `RecordaYA`), QStash vía integración de Vercel. Nuevos: claves de Gemini y Voyage en *Environment Variables*, bucket privado `knowledge` en Supabase Storage, extensión `vector`, schedule de QStash para mantenimiento.
 
 ---
 

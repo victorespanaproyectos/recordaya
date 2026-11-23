@@ -110,7 +110,7 @@ Propósito: configuración del asistente; una fila por negocio. Sin fila ⇒ cha
 | `inactivity_close_hours` | smallint | NN, D 24, check 1–168 | |
 | `answer_questions_on_reminder_replies` | boolean | NN, D true | Ver 02 §5.4 |
 | `confidence_threshold` | numeric(3,2) | NN, D 0.60 | |
-| `llm_model` | text | NN, D 'claude-opus-5-5' | Debe estar en la lista blanca de `config.ts` |
+| `llm_model` | text | NN, D 'default' | `default` = `CHATBOT_DEFAULT_MODEL`; cualquier otro valor debe estar en `CHATBOT_ALLOWED_MODELS` |
 | `llm_effort` | text | NN, D 'low', check in ('low','medium','high') | |
 | `monthly_budget_usd` | numeric(10,2) | NN, D 20 | 0 = solo derivación |
 | `widget_public_key` | text | U, nullable | Fase 2 |
@@ -426,7 +426,7 @@ create table chatbot_settings (
   inactivity_close_hours          smallint not null default 24 check (inactivity_close_hours between 1 and 168),
   answer_questions_on_reminder_replies boolean not null default true,
   confidence_threshold            numeric(3,2) not null default 0.60 check (confidence_threshold between 0 and 1),
-  llm_model                       text not null default 'claude-opus-5-5',
+  llm_model                       text not null default 'default',
   llm_effort                      text not null default 'low' check (llm_effort in ('low','medium','high')),
   monthly_budget_usd              numeric(10,2) not null default 20 check (monthly_budget_usd >= 0),
   widget_public_key               text unique,

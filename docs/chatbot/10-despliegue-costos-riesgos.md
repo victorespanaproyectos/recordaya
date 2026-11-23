@@ -74,7 +74,7 @@ select count(*) from conversation_messages where status = 'failed' and created_a
 
 ### 23.7 Runbook (contenido mínimo de `docs/chatbot/RUNBOOK.md`, T-14.2)
 
-Activar/desactivar; rotar `ANTHROPIC_API_KEY`/`VOYAGE_API_KEY`/`CHATBOT_PROMPT_CANARY`; reprocesar todas las fuentes de un negocio; cambiar de modelo; subir tope de gasto; liberar conversaciones de un operador ausente; borrar datos de un contacto; restaurar respaldo.
+Activar/desactivar; rotar `GEMINI_API_KEY`/`VOYAGE_API_KEY`/`CHATBOT_PROMPT_CANARY`; reprocesar todas las fuentes de un negocio; cambiar de modelo; subir tope de gasto; liberar conversaciones de un operador ausente; borrar datos de un contacto; restaurar respaldo.
 
 ---
 
@@ -82,12 +82,14 @@ Activar/desactivar; rotar `ANTHROPIC_API_KEY`/`VOYAGE_API_KEY`/`CHATBOT_PROMPT_C
 
 ### 24.1 Precios unitarios usados
 
+> **Revisión 2026-11-19:** la demo usa Gemini en capa gratuita y Voyage `voyage-4-lite` (costo cero dentro de sus cupos; los límites vigentes se verifican en cada consola). Las tablas de Claude de abajo son la referencia de costo si se pasa a un modelo de pago. El costo en USD que muestra el panel es una **estimación a precio de lista**, no lo que se factura.
+
 | Concepto | Precio | Fuente / estado |
 | --- | --- | --- |
 | `claude-opus-5-5` | USD 4 entrada / 20 salida por millón de tokens; lectura de caché 0,20 | Referencia oficial de Anthropic (2026-11-03) |
 | `claude-sonnet-5-5` | USD 2 / 10; lectura de caché 0,10 | idem |
 | `claude-haiku-5-5` | USD 0,10 / 0,50 (prompts ≤ 100 k tokens) | idem |
-| Embeddings Voyage `voyage-3.5-lite` | ~USD 0,02 por millón de tokens | **[PENDIENTE]** verificar |
+| Embeddings Voyage `voyage-4-lite` | 200 M de tokens gratis por cuenta (según su página de precios) | **[PENDIENTE]** verificar |
 | WhatsApp: respuestas libres dentro de la ventana de atención (servicio) | Sin cargo según el modelo de precios por mensaje de Meta | **[PENDIENTE]** verificar tarifa y país de facturación |
 | WhatsApp: plantilla de reapertura (utility) fuera de ventana | Cargo por mensaje según país | **[PENDIENTE]** |
 | Supabase | Free (500 MB BD, 1 GB Storage, pausa por inactividad) / Pro ~USD 25/mes | **[PENDIENTE]** verificar plan y precio vigente |
@@ -190,7 +192,7 @@ Una corrida completa de `eval:chatbot` (~120 casos) con Opus 5.5 ≈ USD 4; con 
 - [ ] Respaldo de producción hecho y verificado (restaurable).
 - [ ] Migraciones 0005–0011 probadas `up → down → up` en dev.
 - [ ] Variables de entorno cargadas en Vercel Production (sin valores en el repo).
-- [ ] Límites de gasto configurados en consolas de Anthropic y Voyage.
+- [ ] Límites de gasto configurados en consolas de Google (Gemini) y Voyage.
 - [ ] Supabase Auth: registro deshabilitado, URLs de redirección de producción, plantillas de email en español.
 - [ ] Bucket `knowledge` privado.
 - [ ] Planes de Vercel, Supabase y QStash adecuados al escenario.

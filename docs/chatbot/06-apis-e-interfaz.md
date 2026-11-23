@@ -139,15 +139,16 @@ Se agregan a `.env.example` (sin valores) y a Vercel.
 CHATBOT_ENABLED=false
 # Opcional durante el piloto: solo estos teléfonos (coma) pasan por el chatbot; el resto, ruta legacy
 CHATBOT_ALLOWLIST_PHONES=
-# Proveedor de generación (Anthropic). Solo servidor.
-ANTHROPIC_API_KEY=
-# Modelo por defecto si el negocio no define uno (lista blanca en src/lib/chatbot/config.ts)
-CHATBOT_DEFAULT_MODEL=claude-opus-5-5
-CHATBOT_DEFAULT_EFFORT=low
+# Proveedor de generación (Gemini, capa gratuita). Solo servidor.
+GEMINI_API_KEY=
+# Modelos que un negocio puede elegir (coma) y modelo por defecto (cuando llm_model = 'default').
+# Los ids exactos de Gemini no están fijados en el código: se verifican en la documentación de Google.
+CHATBOT_ALLOWED_MODELS=
+CHATBOT_DEFAULT_MODEL=
 # Embeddings
 EMBEDDINGS_PROVIDER=voyage
 VOYAGE_API_KEY=
-EMBEDDINGS_MODEL=voyage-3.5-lite
+EMBEDDINGS_MODEL=voyage-4-lite
 EMBEDDINGS_DIMENSIONS=1024
 # Límites
 CHATBOT_DEFAULT_MONTHLY_BUDGET_USD=20
@@ -168,7 +169,7 @@ NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=
 PANEL_LEGACY_LOGIN=true
 ```
 
-Dependencias nuevas (`package.json`): `@anthropic-ai/sdk`, `zod`, `@supabase/ssr`, `unpdf`, `mammoth`, `linkedom`, `@mozilla/readability`, `voyageai` **o** `fetch` directo a la API REST de Voyage [PENDIENTE elegir tras revisar el SDK]; dev: `vitest`, `@vitest/coverage-v8`, `prettier` (opcional). Versiones exactas fijadas al implementar (`npm view <pkg> version`).
+Dependencias nuevas (`package.json`): `zod`, `@supabase/ssr`, `unpdf`, `mammoth`, `linkedom`, `@mozilla/readability`; Gemini y Voyage se llaman con `fetch` (REST), sin SDK; dev: `vitest`, `jszip`. Versiones exactas fijadas al implementar (`npm view <pkg> version`).
 
 ---
 
