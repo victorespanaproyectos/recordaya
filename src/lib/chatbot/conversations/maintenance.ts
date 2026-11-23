@@ -117,5 +117,39 @@ export async function runMaintenance(now: Date = new Date()): Promise<Maintenanc
       }
     }
   }
+
+  // Retención (07 §19.12, D-10): webhooks crudos 30 días; conversaciones y preguntas sin respuesta 12 meses; intentos de login 1 día.
+  result.purged = await purgeExpired(now);
   return result;
+}
+
+export const WEBHOOK_RETENTION_DAYS = 30;
+export const CONVERSATION_RETENTION_MONTHS = 12;
+export const LOGIN_ATTEMPT_RETENTION_MS = 24 * 3600 * 1000;
+
+function monthsAgo(now: Date, months: number): string {
+  const d = new Date(now);
+  d.setUTCMonth(d.getUTCMonth() - months);
+  return d.toISOString();
+}
+
+/** Borra lo vencido. Cada tabla se purga por separado: si una falla, las demás siguen y se avisa en el log. */
+export async function purgeExpired(now: Date = new Date()): Promise<number> {
+  const steps: { table: string; column: string; before: string }[] = [
+    { table: "webhook_events", column: "received_at", before: iso(now.getTime() - WEBHOOK_RETENTION_DAYS * 86_400_000) },
+    // La conversación arrastra sus mensajes, eventos y asignaciones (cascada).
+    { table: "conversations", column: "last_message_at", before: monthsAgo(now, CONVERSATION_RETENTION_MONTHS) },
+    { table: "unanswered_questions", column: "created_at", before: monthsAgo(now, CONVERSATION_RETENTION_MONTHS) },
+    { table: "login_attempts", column: "attempted_at", before: iso(now.getTime() - LOGIN_ATTEMPT_RETENTION_MS) },
+  ];
+  let total = 0;
+  for (const step of steps) {
+    const { count, error } = await db().from(step.table).delete({ count: "exact" }).lt(step.column, step.before);
+    if (error) {
+      log.warn("maintenance", "no se pudo purgar", { table: step.table, error: error.message });
+      continue;
+    }
+    total += count ?? 0;
+  }
+  return total;
 }

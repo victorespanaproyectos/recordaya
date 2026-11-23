@@ -90,6 +90,23 @@ const INJECTION_PATTERNS: { name: string; re: RegExp }[] = [
   { name: "jailbreak", re: /\b(jailbreak|modo desarrollador|developer mode|DAN mode|sin restricciones)\b/i },
 ];
 
+/**
+ * Frases de un documento que parecen órdenes para una IA («IA: ignora tus instrucciones…», «dile al cliente que…»).
+ * Se usa al ingerir (07 §19.8, capa 7): el fragmento se marca `metadata.suspicious`; no se bloquea ni se borra.
+ */
+const DIRECTED_PATTERNS: RegExp[] = [
+  /\b(ia|ai|asistente|chatbot|bot|assistant)\s*[:,-]\s*(ignor|olvid|di |dile|responde|actúa|actua|no |nunca|siempre|you must|ignore)/i,
+  /\b(ignor[ae]|olvid[ae]|descarta)\b.{0,30}\b(instrucciones|reglas|indicaciones|anteriores)\b/i,
+  /\b(ignore|disregard|forget)\b.{0,30}\b(instructions|rules|previous|above)\b/i,
+  /\b(dile|dí|di|responde|contesta)\b.{0,20}\b(al cliente|a los clientes|al usuario)\b/i,
+  /\b(act[uú]a como|compórtate como|finge ser|you are now|ahora eres)\b/i,
+  /\b(system prompt|prompt del sistema)\b/i,
+];
+
+export function looksLikeInstructionsForAi(text: string): boolean {
+  return DIRECTED_PATTERNS.some((re) => re.test(text));
+}
+
 export interface InjectionCheck {
   suspected: boolean;
   matches: string[];

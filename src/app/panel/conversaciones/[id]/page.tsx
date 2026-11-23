@@ -14,6 +14,7 @@ import { CONVERSATION_STATUS, HANDOFF_REASON } from "../labels";
 import { ActionsBar } from "./actions-bar";
 import { Composer } from "./composer";
 import { ContactPanel } from "./contact-panel";
+import { EraseContact } from "./erase-contact";
 import { ConversationTimeline } from "./conversation-timeline";
 
 export const metadata: Metadata = { title: "Conversación · RecordaYa" };
@@ -75,7 +76,10 @@ async function Detail({ params }: { params: PageProps<"/panel/conversaciones/[id
             <Composer id={c.id} enabled={canWrite} reason={reason} windowClosesAt={detail.windowClosesAt} hasTemplate={reopenTemplateName() !== null} />
           </div>
         </div>
-        <ContactPanel detail={detail} />
+        <div className="space-y-5">
+          <ContactPanel detail={detail} />
+          {can(member.role, "contact.erase") && <EraseContact id={c.id} />}
+        </div>
       </div>
     </div>
   );

@@ -3,6 +3,7 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { isLegacyLoginEnabled } from "@/lib/auth/legacy";
+import { clearFailedLogins, isLoginBlocked, loginThrottleKey, recordFailedLogin } from "@/lib/auth/login-throttle";
 import { activateInvitedMembers } from "@/lib/auth/members";
 import { createSupabaseServerClient, isSupabaseAuthConfigured } from "@/lib/auth/supabase-server";
 import {
@@ -79,7 +80,15 @@ async function signInLegacy(password: string, formData: FormData, delay: Promise
   if (!expected) return { error: "El panel no está configurado (falta PANEL_PASSWORD)." };
 
   await delay;
-  if (!safeEqual(password, expected)) return { error: "Contraseña incorrecta." };
+  const throttleKey = await loginThrottleKey();
+  if (await isLoginBlocked(throttleKey)) {
+    return { error: "Demasiados intentos. Espera unos minutos antes de volver a intentar." };
+  }
+  if (!safeEqual(password, expected)) {
+    await recordFailedLogin(throttleKey);
+    return { error: "Contraseña incorrecta." };
+  }
+  await clearFailedLogins(throttleKey);
 
   (await cookies()).set(SESSION_COOKIE, await createSessionToken(), {
     httpOnly: true,

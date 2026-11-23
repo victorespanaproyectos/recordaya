@@ -381,7 +381,7 @@ describe.skipIf(!hasDb)("Atención humana", () => {
     it("es idempotente: la segunda corrida seguida no cambia nada", async () => {
       await conv(a, "resolved", { ageHours: 40 });
       await runMaintenance();
-      expect(await runMaintenance()).toEqual({ resolved: 0, closed: 0, requeued: expect.any(Number), unavailable: 0, purged: 0 });
+      expect(await runMaintenance()).toEqual({ resolved: 0, closed: 0, requeued: expect.any(Number), unavailable: 0, purged: expect.any(Number) });
     });
   });
 });

@@ -20,6 +20,8 @@ import type { ResolvedBusiness } from "@/lib/chatbot/business-resolver";
 export const RATE_LIMIT_WINDOW_MS = 10 * 60 * 1000;
 export const RATE_LIMIT_PER_WINDOW = 20;
 export const RATE_LIMIT_PER_DAY = 100;
+/** Respuestas del bot por conversación y día (07 §19.10). */
+export const BOT_REPLIES_PER_DAY = 60;
 const LEASE_SECONDS = 90;
 
 const db = () => getSupabaseAdmin();
@@ -121,9 +123,13 @@ export function createTurnDeps(options: { channel?: ChannelSender } = {}): TurnD
       const since = (ms: number) => new Date(Date.now() - ms).toISOString();
       const count = async (ms: number) =>
         (await db().from("conversation_messages").select("id", { count: "exact", head: true }).eq("conversation_id", ctx.conversation.id).eq("direction", "inbound").gte("created_at", since(ms))).count ?? 0;
-      const over = (await count(RATE_LIMIT_WINDOW_MS)) > RATE_LIMIT_PER_WINDOW || (await count(24 * 3600 * 1000)) > RATE_LIMIT_PER_DAY;
-      if (!over) return "ok";
-      const { count: notified } = await db().from("conversation_events").select("id", { count: "exact", head: true }).eq("conversation_id", ctx.conversation.id).eq("type", "rate_limited").gte("created_at", since(RATE_LIMIT_WINDOW_MS));
+      const botReplies = async () =>
+        (await db().from("conversation_messages").select("id", { count: "exact", head: true }).eq("conversation_id", ctx.conversation.id).eq("direction", "outbound").eq("sender_type", "bot").gte("created_at", since(24 * 3600 * 1000))).count ?? 0;
+      const windowOver = (await count(RATE_LIMIT_WINDOW_MS)) > RATE_LIMIT_PER_WINDOW;
+      const dayOver = (await count(24 * 3600 * 1000)) > RATE_LIMIT_PER_DAY || (await botReplies()) >= BOT_REPLIES_PER_DAY;
+      if (!windowOver && !dayOver) return "ok";
+      // Un aviso por ventana de 10 min; si solo se pasó el tope diario, un solo aviso al día.
+      const { count: notified } = await db().from("conversation_events").select("id", { count: "exact", head: true }).eq("conversation_id", ctx.conversation.id).eq("type", "rate_limited").gte("created_at", since(windowOver ? RATE_LIMIT_WINDOW_MS : 24 * 3600 * 1000));
       if (notified) return "silent";
       await logEvent({ conversationId: ctx.conversation.id, businessId: ctx.businessId, type: "rate_limited", actorType: "system" });
       return "notify";

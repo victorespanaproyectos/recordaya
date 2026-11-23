@@ -18,6 +18,7 @@ const MATRIX: Record<Permission, Role[]> = {
   "metrics.view": ["owner", "admin", "operator"],
   "usage_costs.view": ["owner", "admin"],
   "members.manage": ["owner", "admin"],
+  "contact.erase": ["owner"],
 };
 
 describe("can()", () => {

@@ -1,4 +1,5 @@
 import "server-only";
+import { auditIpHash } from "@/lib/security/ip";
 import { z } from "zod";
 import { ServiceError } from "@/lib/appointments/service";
 import { isAllowedModel } from "@/lib/chatbot/config";
@@ -231,6 +232,7 @@ export async function upsertChatbotSettings(
       target_type: "chatbot_settings",
       target_id: businessId,
       diff: existing ? diff : { created: true, ...diff },
+      ip_hash: await auditIpHash(),
     });
     if (error) throw error;
   }

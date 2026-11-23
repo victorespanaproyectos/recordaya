@@ -5,7 +5,7 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { ServiceError } from "@/lib/appointments/service";
 import { requireMember } from "@/lib/auth/session";
-import { getSource, getSourceContent } from "@/lib/chatbot/rag/sources";
+import { countSuspiciousChunks, getSource, getSourceContent } from "@/lib/chatbot/rag/sources";
 import { timeAgo } from "@/lib/dates";
 import { cn } from "@/lib/panel/ui";
 import { AutoRefresh } from "../auto-refresh";
@@ -28,12 +28,16 @@ async function SourceDetail({ params }: { params: PageProps<"/panel/conocimiento
 
   let data;
   try {
-    data = { ...(await getSource(member.businessId, id)), content: await getSourceContent(member.businessId, id) };
+    data = {
+      ...(await getSource(member.businessId, id)),
+      content: await getSourceContent(member.businessId, id),
+      suspicious: await countSuspiciousChunks(member.businessId, id),
+    };
   } catch (error) {
     if (error instanceof ServiceError && error.status === 404) notFound();
     throw error;
   }
-  const { source, versions, content } = data;
+  const { source, versions, content, suspicious } = data;
   const st = STATUS_LABEL[source.status];
   const error = errorMessage(source.lastError);
   const busy = versions.some((v) => v.status === "pending" || v.status === "processing");
@@ -53,6 +57,11 @@ async function SourceDetail({ params }: { params: PageProps<"/panel/conocimiento
           · actualizado {timeAgo(new Date(source.updatedAt))}
         </p>
         {error && <p className="text-sm text-rose-600 dark:text-rose-300">{error}</p>}
+        {suspicious > 0 && (
+          <p role="status" className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-800 dark:text-amber-200">
+            {suspicious === 1 ? "Un fragmento de esta fuente parece" : `${suspicious} fragmentos de esta fuente parecen`} contener instrucciones dirigidas a una IA. El asistente trata todo el contenido como datos y no las obedece, pero conviene revisar y corregir el texto.
+          </p>
+        )}
       </div>
 
       <section className="space-y-2">

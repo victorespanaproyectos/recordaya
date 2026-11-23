@@ -1,4 +1,5 @@
 import "server-only";
+import { auditIpHash } from "@/lib/security/ip";
 import { z } from "zod";
 import { ServiceError } from "@/lib/appointments/service";
 import { can } from "@/lib/auth/permissions";
@@ -154,6 +155,7 @@ async function audit(member: Member, businessId: string, action: string, sourceI
     target_type: "knowledge_source",
     target_id: sourceId,
     diff: diff ?? null,
+    ip_hash: await auditIpHash(),
   });
   if (error) throw error;
 }
@@ -250,8 +252,34 @@ function toVersion(r: Record<string, unknown>): DocumentVersion {
   };
 }
 
+/** Límites de ingesta por negocio (07 §19.10): 50 fuentes por día y 200 MB de archivos por mes. */
+export const MAX_SOURCES_PER_DAY = 50;
+export const MAX_UPLOAD_BYTES_PER_MONTH = 200 * 1024 * 1024;
+
+async function assertIngestQuota(businessId: string, input: SourceInput) {
+  const now = new Date();
+  const { count, error } = await db()
+    .from("knowledge_sources")
+    .select("id", { count: "exact", head: true })
+    .eq("business_id", businessId)
+    .gte("created_at", new Date(now.getTime() - 24 * 3_600_000).toISOString()); // incluye las eliminadas: borrar no libera el cupo
+  if (error) throw error;
+  if ((count ?? 0) >= MAX_SOURCES_PER_DAY) {
+    throw new ServiceError(`Alcanzaste el máximo de ${MAX_SOURCES_PER_DAY} fuentes por día. Intenta de nuevo mañana.`);
+  }
+  if (input?.type !== "file") return;
+  const monthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)).toISOString();
+  const { data, error: sizeError } = await db().from("knowledge_documents").select("size_bytes").eq("business_id", businessId).gte("created_at", monthStart).not("size_bytes", "is", null);
+  if (sizeError) throw sizeError;
+  const used = (data ?? []).reduce((sum, d) => sum + ((d.size_bytes as number) ?? 0), 0);
+  if (used + (Number(input.sizeBytes) || 0) > MAX_UPLOAD_BYTES_PER_MONTH) {
+    throw new ServiceError("Alcanzaste el máximo de 200 MB de archivos por mes.");
+  }
+}
+
 export async function createSource(businessId: string, input: SourceInput, member: Member): Promise<Source> {
   assertCanWrite(member);
+  await assertIngestQuota(businessId, input);
   const base = { business_id: businessId, created_by: member.id, updated_by: member.id, status: "pending" as const };
   let row: Record<string, unknown>;
   let file: { mimeType: string; sizeBytes: number } | undefined;
@@ -500,6 +528,18 @@ export async function getSourceContent(businessId: string, id: string): Promise<
     extractedChars: doc?.extracted_chars ?? null,
     chunks: (chunks ?? []).map((c) => ({ index: c.chunk_index, content: c.content, tokenEstimate: c.token_estimate })),
   };
+}
+
+/** Fragmentos de una fuente marcados como sospechosos al ingerir (instrucciones dirigidas a una IA). */
+export async function countSuspiciousChunks(businessId: string, sourceId: string): Promise<number> {
+  const { count, error } = await db()
+    .from("knowledge_chunks")
+    .select("id", { count: "exact", head: true })
+    .eq("business_id", businessId)
+    .eq("source_id", sourceId)
+    .contains("metadata", { suspicious: true });
+  if (error) throw error;
+  return count ?? 0;
 }
 
 export async function getSource(businessId: string, id: string): Promise<{ source: Source; versions: DocumentVersion[] }> {

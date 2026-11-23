@@ -1,5 +1,6 @@
 import "server-only";
 import { createHash } from "node:crypto";
+import { looksLikeInstructionsForAi } from "@/lib/chatbot/engine/guardrails";
 import { enqueueIngest } from "@/lib/chatbot/jobs";
 import { ProviderError, type EmbeddingProvider } from "@/lib/chatbot/providers/types";
 import { getEmbeddingProvider } from "@/lib/chatbot/providers/registry";
@@ -203,7 +204,7 @@ export async function ingestDocument(documentId: string, options: IngestOptions 
           chunk_index: c.index,
           content: c.content,
           token_estimate: c.tokenEstimate,
-          metadata: c.section ? { section: c.section } : {},
+          metadata: { ...(c.section ? { section: c.section } : {}), ...(looksLikeInstructionsForAi(c.text) ? { suspicious: true } : {}) },
           embedding: `[${vectors[n].join(",")}]`,
         })),
       );

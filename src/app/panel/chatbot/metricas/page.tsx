@@ -56,6 +56,14 @@ async function Metrics({ searchParams }: { searchParams: PageProps<"/panel/chatb
         </div>
       </div>
 
+      {m.costs && m.costs.monthCostUsd >= m.costs.monthlyBudgetUsd * 0.8 && (
+        <p role="status" className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-800 dark:text-amber-200">
+          {m.costs.monthCostUsd >= m.costs.monthlyBudgetUsd
+            ? `Llegaste al tope mensual (${usd(m.costs.monthlyBudgetUsd)}): el asistente solo deriva a una persona hasta el mes que viene o hasta que el propietario suba el tope.`
+            : `Ya usaste el ${Math.round((m.costs.monthCostUsd / m.costs.monthlyBudgetUsd) * 100)} % del tope mensual (${usd(m.costs.monthlyBudgetUsd)}).`}
+        </p>
+      )}
+
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Card label="Conversaciones" value={String(m.conversations)} />
         <Card label="Resueltas por la IA" value={m.resolvedByAiPct === null ? "—" : `${m.resolvedByAiPct} %`} hint="sin pasar por una persona" />

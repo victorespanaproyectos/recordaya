@@ -99,6 +99,8 @@ export interface InboundInput {
   contentType: string;
 }
 
+const MAX_APPEND_ATTEMPTS = 25;
+
 /**
  * Guarda el mensaje del cliente. Idempotente por `inbound_message_id`: reprocesar el mismo entrante no duplica
  * ni vuelve a contar como no leído. Un cliente que escribe en una conversación `resolved` la reabre (`bot`).
@@ -124,17 +126,39 @@ export async function appendInbound(conversation: Conversation, input: InboundIn
   }
   if (error) throw error;
 
-  const now = new Date().toISOString();
-  const reopen = conversation.status === "resolved";
-  const update = {
-    last_inbound_at: now,
-    last_message_at: now,
-    unread_count: conversation.unreadCount + 1,
-    ...(reopen && { status: "bot", resolved_at: null, resolved_by: null, version: conversation.version + 1 }),
-  };
-  const { data: updated, error: updateError } = await db().from("conversations").update(update).eq("id", conversation.id).select(CONVERSATION_COLUMNS).single<Row>();
-  if (updateError) throw updateError;
-  if (reopen) await logEvent({ conversationId: conversation.id, businessId: conversation.businessId, type: "reopened", actorType: "customer", from: "resolved", to: "bot" });
+  // Contador sin pérdidas: la actualización solo se aplica si nadie cambió la conversación entre la lectura y la
+  // escritura (mismo unread_count y misma versión). Si dos mensajes llegan a la vez, el segundo relee y reintenta.
+  let current = conversation;
+  let updated: Row | null = null;
+  for (let attempt = 0; attempt < MAX_APPEND_ATTEMPTS && !updated; attempt++) {
+    const now = new Date().toISOString();
+    const reopen = current.status === "resolved";
+    const { data: row, error: updateError } = await db()
+      .from("conversations")
+      .update({
+        last_inbound_at: now,
+        last_message_at: now,
+        unread_count: current.unreadCount + 1,
+        ...(reopen && { status: "bot", resolved_at: null, resolved_by: null, version: current.version + 1 }),
+      })
+      .eq("id", current.id)
+      .eq("unread_count", current.unreadCount)
+      .eq("version", current.version)
+      .select(CONVERSATION_COLUMNS)
+      .maybeSingle<Row>();
+    if (updateError) throw updateError;
+    if (row) {
+      updated = row;
+      if (reopen) await logEvent({ conversationId: current.id, businessId: current.businessId, type: "reopened", actorType: "customer", from: "resolved", to: "bot" });
+    } else {
+      // Pequeña espera aleatoria para que los competidores no vuelvan a chocar al mismo tiempo.
+      await new Promise((resolve) => setTimeout(resolve, Math.random() * 40));
+      const { data: fresh, error: freshError } = await db().from("conversations").select(CONVERSATION_COLUMNS).eq("id", current.id).single<Row>();
+      if (freshError) throw freshError;
+      current = toConversation(fresh);
+    }
+  }
+  if (!updated) throw new Error("No se pudo actualizar la conversación: demasiada concurrencia");
   return { id: data.id, duplicate: false, conversation: toConversation(updated) };
 }
 

@@ -6,6 +6,8 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } 
 import { POST } from "@/app/api/jobs/chatbot-reply/route";
 import type { BotOutput } from "@/lib/chatbot/engine/schema";
 import { fakeEmbeddings, fakeLlm } from "@/lib/chatbot/providers/fake";
+import { claimConversation, returnToBot } from "@/lib/chatbot/conversations/operator";
+import { ProviderError } from "@/lib/chatbot/providers/types";
 import { ingestDocument } from "@/lib/chatbot/rag/ingest";
 import { createSource, getSource } from "@/lib/chatbot/rag/sources";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
@@ -157,6 +159,49 @@ describe.skipIf(!hasDb)("Job chatbot-reply", () => {
     expect(c.summary).toBe("Quiere hablar con una persona sobre su turno.");
     const { data: usage } = await db().from("chatbot_usage").select("operation").eq("conversation_id", c.id).eq("operation", "summary");
     expect(usage).toHaveLength(1);
+  });
+
+  it("W-05 (spec) · proveedor de IA caído: 500 para que QStash reintente y, en el último intento, mensaje de «sin información» con la oferta", async () => {
+    fakeLlm.handler = () => {
+      throw new ProviderError("sobrecargado", true, 529);
+    };
+    const phone = testPhone();
+    await inbound(phone, "¿Cuál es el horario de atención?");
+    expect((await runJob()).status).toBe(500);
+    expect(graphFake.calls).toHaveLength(0);
+
+    const last = lastJob();
+    const final = await POST(
+      new Request("http://localhost:3000/api/jobs/chatbot-reply", {
+        method: "POST",
+        headers: { "content-type": "application/json", "upstash-signature": VALID_QSTASH_SIGNATURE, "upstash-retried": "3" },
+        body: JSON.stringify(last),
+      }),
+    );
+    expect(final.status).toBe(200);
+    expect(graphFake.interactives()).toHaveLength(1); // mensaje de «sin información» + oferta con botones
+    expect(JSON.stringify(graphFake.interactives()[0])).toContain("No tengo esa información");
+    expect(graphFake.interactives()[0].action.buttons.map((b) => b.reply.id)).toEqual(["handoff:yes", "handoff:no"]);
+    expect(await outbound(phone)).toHaveLength(1);
+  });
+
+  it("H-07 · «Devolver a la IA» y el cliente pregunta: la IA responde con el historial de la conversación", async () => {
+    const phone = testPhone();
+    await inbound(phone, "Hola, soy María");
+    await runJob();
+    const c = await conv(phone);
+    const op = { id: memberId, userId: null, businessId: biz.id, role: "admin" as const, displayName: "Ana", legacy: false };
+    await claimConversation(op, c.id);
+    expect((await conv(phone)).status).toBe("human");
+    await returnToBot(op, c.id);
+    expect((await conv(phone)).status).toBe("bot");
+
+    graphFake.reset();
+    fakeLlm.requests = [];
+    await inbound(phone, "¿Cuál es el horario de atención?");
+    await runJob();
+    expect(graphFake.texts()).toEqual([expect.stringContaining("Atendemos de lunes a viernes")]);
+    expect(fakeLlm.requests[0].history.map((h) => h.content).join(" ")).toContain("Hola, soy María");
   });
 
   it("falla transitoria de WhatsApp → 500 (QStash reintenta) y el reintento envía UNA sola respuesta", async () => {

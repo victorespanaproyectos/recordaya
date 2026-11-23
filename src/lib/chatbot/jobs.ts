@@ -6,6 +6,9 @@ export const CHATBOT_REPLY_PATH = "/api/jobs/chatbot-reply";
 export const KNOWLEDGE_INGEST_PATH = "/api/jobs/knowledge-ingest";
 export const CONVERSATIONS_MAINTENANCE_PATH = "/api/jobs/conversations-maintenance";
 
+/** Reintentos de QStash para un turno de IA; en el último, el job responde con el mensaje de respaldo. */
+export const CHATBOT_REPLY_RETRIES = 3;
+
 /** Agrupa ráfagas: el turno de IA espera unos segundos por si el cliente sigue escribiendo (06 §13.1). */
 const REPLY_DELAY_SECONDS = 2.5;
 
@@ -18,7 +21,7 @@ export function enqueueChatbotReply(input: {
   return publishJob(
     CHATBOT_REPLY_PATH,
     { conversationId: input.conversationId, triggerMessageId: input.triggerMessageId },
-    { delaySeconds: REPLY_DELAY_SECONDS, deduplicationId: `chat-${input.waMessageId}`, retries: 3 },
+    { delaySeconds: REPLY_DELAY_SECONDS, deduplicationId: `chat-${input.waMessageId}`, retries: CHATBOT_REPLY_RETRIES },
   );
 }
 

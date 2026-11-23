@@ -27,6 +27,7 @@ const REQUIRED_ROLE = {
   "metrics.view": "operator", // el operador ve métricas sin costos
   "usage_costs.view": "admin",
   "members.manage": "admin", // el admin no gestiona owners: ver canManageRole
+  "contact.erase": "owner", // borrar los datos de un contacto (06 §3.2, 07 §19.12)
 } as const satisfies Record<string, Role>;
 
 export type Permission = keyof typeof REQUIRED_ROLE;

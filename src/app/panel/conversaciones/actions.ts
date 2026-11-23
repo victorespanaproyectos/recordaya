@@ -3,6 +3,7 @@
 import { refresh } from "next/cache";
 import { ServiceError } from "@/lib/appointments/service";
 import { requireMember } from "@/lib/auth/session";
+import { eraseContactData } from "@/lib/chatbot/conversations/erasure";
 import {
   claimConversation, closeConversation, declineHandoffByMember, handoffConversation, markRead, reassignConversation, releaseConversation,
   resolveConversation, returnToBot, sendAgentMessage, sendReopenTemplate,
@@ -15,7 +16,7 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
  * Cada acción exige sesión de miembro, valida los ids y delega en el servicio, que vuelve a comprobar rol, negocio y
  * versión. `business_id` nunca viene del cliente.
  */
-async function run(scope: string, min: "operator" | "admin", id: string, fn: (member: Awaited<ReturnType<typeof requireMember>>) => Promise<string>): Promise<ActionResult> {
+async function run(scope: string, min: "operator" | "admin" | "owner", id: string, fn: (member: Awaited<ReturnType<typeof requireMember>>) => Promise<string>): Promise<ActionResult> {
   const member = await requireMember(min);
   if (!UUID.test(id)) return { ok: false, error: "Conversación inválida" };
   try {
@@ -75,4 +76,9 @@ export async function sendAgentMessageAction(id: string, body: string, clientReq
 
 export async function sendReopenTemplateAction(id: string, clientRequestId: string): Promise<ActionResult> {
   return run("template", "operator", id, async (m) => (await sendReopenTemplate(m, id, String(clientRequestId ?? "")), "Plantilla enviada"));
+}
+
+/** Solo owner: borra el contacto de la conversación y todo lo asociado (07 §19.12). */
+export async function eraseContactDataAction(id: string): Promise<ActionResult> {
+  return run("erase", "owner", id, async (m) => (await eraseContactData(m, id), "Datos del contacto borrados"));
 }

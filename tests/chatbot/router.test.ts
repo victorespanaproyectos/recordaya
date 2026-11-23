@@ -344,6 +344,14 @@ describe.skipIf(!hasDb)("Router de mensajes entrantes", () => {
       expect(convs).toHaveLength(1);
       expect((await messagesOf(phone)).filter((m) => m.direction === "inbound")).toHaveLength(3);
       expect(jobs()).toHaveLength(3); // el job agrupa; la deduplicación es por wamid
+      expect((await convOf(phone))!.unread_count).toBe(3);
+    });
+    it("el contador de no leídos no pierde mensajes con entrantes simultáneos", async () => {
+      const phone = testPhone();
+      await send(phone, { text: "hola" });
+      await Promise.all(Array.from({ length: 6 }, (_, i) => send(phone, { text: `mensaje ${i}` })));
+      expect((await convOf(phone))!.unread_count).toBe(7);
+      expect((await messagesOf(phone)).filter((m) => m.direction === "inbound")).toHaveLength(7);
     });
     it("el mismo wamid reenviado por Meta no duplica mensaje ni job", async () => {
       const phone = testPhone();
@@ -390,6 +398,26 @@ describe.skipIf(!hasDb)("Router de mensajes entrantes", () => {
     it("un estado de un mensaje desconocido se ignora", async () => {
       const res = await postWebhook(statusPayload("wamid.DESCONOCIDO", "read", testPhone()));
       expect(res.status).toBe(200);
+    });
+  });
+
+  describe("fallo del router", () => {
+    it("si el router falla antes de contestar, cae a legacy y el cliente recibe el aviso 1/2 de siempre", async () => {
+      const phone = testPhone();
+      await insertAppointment({ businessId: biz.id, phone, startsAt: inDays(1) });
+      qstashFake.publishError = new Error("QStash caído"); // falla al encolar la respuesta del chatbot (regla 5)
+      await send(phone, { text: "¿Tienen estacionamiento?" });
+      qstashFake.publishError = null;
+      expect(graphFake.texts().some((t) => t.includes("Responde"))).toBe(true);
+      expect(jobs()).toHaveLength(0);
+    });
+    it("si la configuración del chatbot no se puede leer, cae a legacy sin perder la lógica de recordatorios", async () => {
+      const phone = testPhone();
+      const { id, wamid } = await withReminder(phone);
+      const spy = vi.spyOn(await import("@/lib/chatbot/settings"), "getChatbotSettings").mockRejectedValueOnce(new Error("base caída"));
+      await send(phone, { text: "1", contextId: wamid });
+      spy.mockRestore();
+      expect(await apptStatus(id)).toBe("confirmed");
     });
   });
 

@@ -108,6 +108,8 @@ export interface TurnInput {
   triggerMessageId: string;
   /** Zona de pruebas: sin lease, sin precondiciones ni límites, sin entrega; el uso se registra como `playground`. */
   dryRun?: boolean;
+  /** Último intento de QStash: un error transitorio del proveedor ya no se relanza; el cliente recibe el mensaje de «sin información» con la oferta (W-05). */
+  finalAttempt?: boolean;
 }
 
 // ---------------------------------------------------------------------------------------------------------------
@@ -351,7 +353,7 @@ async function run(input: TurnInput, deps: TurnDeps, dry: boolean): Promise<Turn
         model, effort: settings.llm_effort, system, context: contextBlock, history: turns, schema: BotOutput, maxOutputTokens: 1024, timeoutMs: 25_000,
       });
     } catch (error) {
-      if (error instanceof ProviderError && !error.retryable) {
+      if (error instanceof ProviderError && (!error.retryable || input.finalAttempt)) {
         result = null;
         break;
       }

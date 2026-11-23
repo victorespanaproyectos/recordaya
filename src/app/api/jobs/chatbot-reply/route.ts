@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { CHATBOT_REPLY_RETRIES } from "@/lib/chatbot/jobs";
 import { chatbotActiveFor, createTurnDeps } from "@/lib/chatbot/conversations/turn";
 import { runChatbotTurn } from "@/lib/chatbot/engine/orchestrator";
 import { log } from "@/lib/logger";
@@ -34,7 +35,10 @@ export async function POST(request: Request) {
     if (!conv) return Response.json({ outcome: "skipped", reason: "conversation_not_found" });
     if (!(await chatbotActiveFor(conv.business_id))) return Response.json({ outcome: "skipped", reason: "chatbot_disabled" });
 
-    const result = await runChatbotTurn({ conversationId, triggerMessageId }, createTurnDeps());
+    // QStash informa cuántas veces reintentó este mensaje; en el último intento no se deja al cliente sin respuesta.
+    const retried = Number(request.headers.get("upstash-retried") ?? 0);
+    const finalAttempt = Number.isFinite(retried) && retried >= CHATBOT_REPLY_RETRIES;
+    const result = await runChatbotTurn({ conversationId, triggerMessageId, finalAttempt }, createTurnDeps());
     if (result.outcome === "skipped") return Response.json({ outcome: "skipped", reason: result.reason });
     return Response.json({ outcome: result.delivery.handoffOffer ? "handoff" : "sent" });
   } catch (error) {

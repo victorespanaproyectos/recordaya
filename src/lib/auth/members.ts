@@ -1,4 +1,5 @@
 import "server-only";
+import { auditIpHash } from "@/lib/security/ip";
 import { ServiceError } from "@/lib/appointments/service";
 import { canManageRole, type Role } from "@/lib/auth/permissions";
 import type { Member } from "@/lib/auth/session";
@@ -76,6 +77,7 @@ async function audit(
     target_type: "member",
     target_id: targetId,
     diff,
+    ip_hash: await auditIpHash(),
   });
   if (error) throw error;
 }
@@ -186,6 +188,7 @@ export async function activateInvitedMembers(user: {
       action: "member.activated",
       target_type: "member",
       target_id: m.id,
+      ip_hash: await auditIpHash(),
     });
     if (auditError) throw auditError;
   }
