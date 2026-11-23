@@ -9,7 +9,7 @@
     "lint": "eslint",
     "simulate:reply": "node --env-file=.env.local scripts/simulate-reply.mjs",
     "seed:demo": "node --env-file=.env.local scripts/seed-demo.mjs",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "next typegen && tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
     "eval:chatbot": "vitest run --config vitest.eval.config.ts"
