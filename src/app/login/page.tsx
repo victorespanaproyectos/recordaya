@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
 import { Logo } from "@/components/logo";
+import { isLegacyLoginEnabled } from "@/lib/auth/legacy";
 import { LoginForm } from "./login-form";
 
 export const metadata: Metadata = {
@@ -70,7 +71,7 @@ export default function LoginPage() {
           <h2 className="text-2xl font-bold tracking-tight">Bienvenido de vuelta</h2>
           <p className="mt-1.5 mb-8 text-muted">Entra para gestionar los turnos y recordatorios.</p>
           <Suspense>
-            <LoginForm />
+            <LoginForm legacy={isLegacyLoginEnabled()} />
           </Suspense>
           <p className="mt-8 text-center text-xs text-muted">
             ¿Viste esta demo en un portfolio? Pide la contraseña al autor.

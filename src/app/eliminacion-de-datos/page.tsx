@@ -37,8 +37,11 @@ export default function EliminacionDeDatosPage() {
       <h2>Qué se elimina</h2>
       <p>
         Tu ficha de cliente, tus turnos, los mensajes que te enviamos con sus estados de entrega y
-        las respuestas que enviaste. Los mensajes que ya están en tu teléfono los puedes borrar
-        desde WhatsApp.
+        las respuestas que enviaste, y tus conversaciones con el asistente (mensajes, resúmenes y
+        preguntas que no pudo responder). Los mensajes que ya están en tu teléfono los puedes borrar
+        desde WhatsApp. Lo que ya recibieron los proveedores de inteligencia artificial para generar
+        una respuesta se rige por sus propias condiciones; ver la{" "}
+        <Link href="/privacidad">política de privacidad</Link>.
       </p>
 
       <p style={{ marginTop: 24 }}>

@@ -88,7 +88,7 @@ Completa `.env.local` (ver comentarios en `.env.example`).
 
 ### 2. Base de datos
 
-En Supabase → **SQL Editor**, pega y ejecuta en orden los archivos de `supabase/migrations/` (`0001_init.sql`, `0002_reminders.sql`, `0003_service_role_grants.sql`, `0004_customer_replies.sql`).
+En Supabase → **SQL Editor**, pega y ejecuta en orden los archivos de `supabase/migrations/` (`0001_init.sql`, `0002_reminders.sql`, `0003_service_role_grants.sql`, `0004_customer_replies.sql`). Las migraciones del chatbot (`0005` a `0012`, aditivas) se aplican igual y cada una tiene su reversión en `supabase/migrations/down/`; el chatbot requiere pgvector (`create extension vector`).
 
 ### 3. Ejecutar
 
@@ -197,6 +197,19 @@ npm run simulate:reply -- 59899123456 1
 npm run simulate:reply -- 59899123456 "No puedo, cancelo"
 ```
 
+Con el chatbot activo (ver `CHATBOT_ENABLED` y el panel `/panel/chatbot`) el script reproduce todos los casos del enrutamiento de mensajes. Para que el chatbot responda, el `phone_number_id` debe coincidir con `businesses.wa_phone_number_id` del negocio:
+
+```bash
+# Responder citando un recordatorio (el wamid sale de la tabla messages)
+npm run simulate:reply -- 59899123456 "1" --context wamid.XXXX
+# Tocar un botón de derivación a una persona
+npm run simulate:reply -- 59899123456 "Sí, con una persona" --button handoff:yes
+# Audio, imagen u otro contenido que no es texto
+npm run simulate:reply -- 59899123456 --type audio
+# Otro número de WhatsApp Business o nombre de perfil
+npm run simulate:reply -- 59899123456 "hola" --phone-number-id 123456789 --name "María"
+```
+
 **Datos de demostración:** para llenar el panel con 20 turnos de ejemplo (pasados, de hoy y próximos, con mensajes, estados y respuestas), sin enviar ningún WhatsApp:
 
 ```bash
@@ -215,6 +228,27 @@ Ojo: los envíos de WhatsApp desde local son reales. Con el número de prueba de
 - `/panel/turnos/:id` — detalle con la conversación (mensajes enviados con ✓/✓✓/leído y respuestas del cliente) y acciones: confirmar, reprogramar, atendido, ausente y cancelar.
 
 Las páginas leen Supabase en el servidor (Server Components dentro de `<Suspense>`, compatible con Cache Components) y las acciones son Server Actions que verifican la sesión. La API (`/api/appointments`) y el panel comparten la misma lógica (`src/lib/appointments/service.ts`).
+
+### Chatbot y atención humana
+
+Con `CHATBOT_ENABLED=true` y un negocio con el chatbot activado (`/panel/chatbot`), los mensajes que no son respuestas a recordatorios los contesta un asistente con IA; si no sabe, o el cliente lo pide, la conversación pasa a una persona del equipo.
+
+- `/panel/conversaciones` — bandeja (pendientes, mías, IA, todas, cerradas), con búsqueda y filtros; el detalle muestra el historial completo, el motivo de la derivación, el resumen y el compositor (solo el asignado, dentro de la ventana de 24 h de WhatsApp).
+- `/panel/conocimiento` — fuentes del asistente (preguntas frecuentes, textos, archivos, páginas web) y preguntas que no supo responder.
+- `/panel/chatbot` — configuración, `/panel/chatbot/pruebas` (probar sin enviar nada) y `/panel/chatbot/metricas`.
+- `/panel/equipo` — invitar y gestionar al equipo (roles owner, admin y operador).
+
+Para producción hay que programar en QStash el mantenimiento de conversaciones (cierra por inactividad, apaga la disponibilidad de quien dejó el panel y re-encola mensajes sin respuesta). Se puede disparar a mano con la clave de administración:
+
+```bash
+curl -X POST https://TU-DOMINIO/api/jobs/conversations-maintenance -H "Authorization: Bearer $ADMIN_API_KEY"
+```
+
+Schedule sugerido: cada 10 minutos (`*/10 * * * *`) apuntando a esa URL. El mismo job aplica la retención de datos: webhooks crudos 30 días, conversaciones y preguntas sin respuesta 12 meses.
+
+**Variables del chatbot** (ver `.env.example`): `CHATBOT_ENABLED`, `CHATBOT_ALLOWLIST_PHONES`, `GEMINI_API_KEY`, `CHATBOT_ALLOWED_MODELS`, `CHATBOT_DEFAULT_MODEL`, `VOYAGE_API_KEY`, `CHATBOT_PROMPT_CANARY`, `AUDIT_IP_SALT`, `WHATSAPP_REOPEN_TEMPLATE`. Generación con Gemini (capa gratuita) y embeddings con Voyage `voyage-4-lite`; ambos se llaman por REST. Las pruebas usan siempre proveedores falsos.
+
+**Seguridad y privacidad:** el login con contraseña compartida se bloquea tras 10 intentos fallidos por IP en 15 minutos; el propietario puede borrar todos los datos de un contacto desde el detalle de la conversación; las acciones sensibles quedan en `audit_log` con el hash de la IP. Más detalle en `docs/chatbot/07-seguridad.md` y `docs/chatbot/11-revision-fase-12.md`. Operación diaria: `docs/chatbot/RUNBOOK.md`.
 
 ## Deploy en Vercel
 

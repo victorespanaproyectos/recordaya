@@ -1,0 +1,2 @@
+# Los reportes con proveedores falsos no valen: no se versionan
+tests/ai-evals/reports/*-fake.md

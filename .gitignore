@@ -45,3 +45,6 @@ next-env.d.ts
 
 # respaldos locales de la base (contienen datos personales)
 backups/
+
+# plantilla de variables de pruebas (sí se versiona)
+!.env.test.example

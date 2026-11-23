@@ -2,5 +2,5 @@
 export const LEGAL = {
   appName: "RecordaYa",
   contactEmail: "victorespana.proyectos@gmail.com",
-  lastUpdated: "15 de noviembre de 2026",
+  lastUpdated: "20 de noviembre de 2026",
 } as const;

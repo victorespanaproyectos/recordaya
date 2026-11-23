@@ -16,7 +16,7 @@ import { Suspense } from "react";
 import { MessageTicks } from "@/components/message-ticks";
 import { StatusBadge } from "@/components/status-badge";
 import { formatHora, relativeDayLabel, dayKey, timeAgo } from "@/lib/dates";
-import { requirePanelSession } from "@/lib/panel/auth";
+import { requireMember } from "@/lib/auth/session";
 import {
   getAgenda,
   getBusinesses,
@@ -46,10 +46,10 @@ export default function PanelPage({ searchParams }: PageProps<"/panel">) {
 }
 
 async function Dashboard({ searchParams }: { searchParams: PageProps<"/panel">["searchParams"] }) {
-  await requirePanelSession();
+  const member = await requireMember("operator");
   const params = await searchParams;
   const view = (VIEWS.find((v) => v.id === params.vista)?.id ?? "upcoming") as AgendaView;
-  const businesses = await getBusinesses();
+  const businesses = await getBusinesses(member.businessId);
   const tz = businesses[0]?.timezone ?? "America/Montevideo";
 
   return (
@@ -64,7 +64,7 @@ async function Dashboard({ searchParams }: { searchParams: PageProps<"/panel">["
       </div>
 
       <Suspense fallback={<StatsSkeleton />}>
-        <Stats timeZone={tz} />
+        <Stats timeZone={tz} businessId={member.businessId} />
       </Suspense>
 
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,1fr)_340px]">
@@ -89,7 +89,7 @@ async function Dashboard({ searchParams }: { searchParams: PageProps<"/panel">["
             ))}
           </nav>
           <Suspense key={view} fallback={<AgendaSkeleton />}>
-            <Agenda view={view} />
+            <Agenda view={view} businessId={member.businessId} />
           </Suspense>
         </section>
 
@@ -98,7 +98,7 @@ async function Dashboard({ searchParams }: { searchParams: PageProps<"/panel">["
             Actividad reciente
           </h2>
           <Suspense fallback={<ActivitySkeleton />}>
-            <Activity />
+            <Activity businessId={member.businessId} />
           </Suspense>
         </aside>
       </div>
@@ -114,8 +114,8 @@ function relativeDayLabelLong(tz: string) {
 
 /* ── Métricas ─────────────────────────────────────────────── */
 
-async function Stats({ timeZone }: { timeZone: string }) {
-  const s = await getStats(timeZone);
+async function Stats({ timeZone, businessId }: { timeZone: string; businessId: string }) {
+  const s = await getStats(timeZone, businessId);
   const cards = [
     {
       label: "Turnos hoy",
@@ -170,8 +170,8 @@ async function Stats({ timeZone }: { timeZone: string }) {
 
 /* ── Agenda ───────────────────────────────────────────────── */
 
-async function Agenda({ view }: { view: AgendaView }) {
-  const items = await getAgenda(view);
+async function Agenda({ view, businessId }: { view: AgendaView; businessId: string }) {
+  const items = await getAgenda(view, businessId);
 
   if (items.length === 0) {
     const copy = {
@@ -292,8 +292,8 @@ function AppointmentCard({ item, index }: { item: AgendaItem; index: number }) {
 
 /* ── Actividad ────────────────────────────────────────────── */
 
-async function Activity() {
-  const items = await getRecentActivity();
+async function Activity({ businessId }: { businessId: string }) {
+  const items = await getRecentActivity(businessId);
   if (items.length === 0) {
     return (
       <div className="rounded-3xl border border-dashed border-border p-6 text-center text-sm text-muted">

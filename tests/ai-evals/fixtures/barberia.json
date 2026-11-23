@@ -1,0 +1,30 @@
+{
+  "name": "Barbería Centro",
+  "address": "Av. 18 de Julio 1234, Montevideo",
+  "timezone": "America/Montevideo",
+  "sources": [
+    { "type": "faq", "title": "Horario de atención", "category": "hours", "question": "¿Cuál es el horario de atención?", "answer": "Atendemos de lunes a viernes de 9:00 a 20:00 y los sábados de 9:00 a 14:00. Los domingos estamos cerrados." },
+    { "type": "faq", "title": "Dirección", "category": "contact", "question": "¿Dónde están ubicados?", "answer": "Estamos en Av. 18 de Julio 1234, a una cuadra de Plaza Independencia." },
+    { "type": "faq", "title": "Precio del corte", "category": "products_services", "question": "¿Cuánto cuesta un corte de pelo?", "answer": "El corte de pelo cuesta $450." },
+    { "type": "faq", "title": "Precio de la barba", "category": "products_services", "question": "¿Cuánto cuesta el arreglo de barba?", "answer": "El arreglo de barba cuesta $300." },
+    { "type": "faq", "title": "Precio de corte y barba", "category": "products_services", "question": "¿Cuánto cuesta el combo de corte y barba?", "answer": "El combo de corte y barba cuesta $650." },
+    { "type": "faq", "title": "Corte para niños", "category": "products_services", "question": "¿Cuánto cuesta el corte para niños?", "answer": "El corte para niños de hasta 12 años cuesta $350." },
+    { "type": "faq", "title": "Cómo reservar", "category": "policies", "question": "¿Cómo reservo un turno?", "answer": "Podés reservar por WhatsApp escribiendo a este chat o llamando al 2900 1234." },
+    { "type": "faq", "title": "Cancelaciones", "category": "policies", "question": "¿Puedo cancelar o reprogramar mi turno?", "answer": "Podés cancelar o reprogramar hasta 2 horas antes del turno, sin costo." },
+    { "type": "faq", "title": "Medios de pago", "category": "policies", "question": "¿Qué medios de pago aceptan?", "answer": "Aceptamos efectivo, tarjetas de débito y crédito (Visa y Mastercard) y transferencia bancaria. No aceptamos cheques." },
+    { "type": "faq", "title": "Estacionamiento", "category": "contact", "question": "¿Tienen estacionamiento?", "answer": "No tenemos estacionamiento propio. A media cuadra, sobre Convención, hay una playa de estacionamiento." },
+    { "type": "faq", "title": "Tinte", "category": "products_services", "question": "¿Hacen tintes?", "answer": "Sí, el tinte de cabello cuesta $1200 e incluye el lavado." },
+    { "type": "faq", "title": "Mascotas", "category": "policies", "question": "¿Puedo entrar con mi mascota?", "answer": "No se permiten mascotas en el local, salvo perros guía." },
+    { "type": "faq", "title": "Productos a la venta", "category": "products_services", "question": "¿Venden productos para el cuidado del pelo y la barba?", "answer": "Vendemos pomadas y aceites para barba de la marca Don Bigote, desde $380." },
+    { "type": "faq", "title": "Duración de los servicios", "category": "products_services", "question": "¿Cuánto dura un servicio?", "answer": "Un corte dura unos 30 minutos y el combo de corte y barba, unos 50 minutos." },
+    { "type": "faq", "title": "Llegadas tarde", "category": "policies", "question": "¿Qué pasa si llego tarde?", "answer": "Hay una tolerancia de 10 minutos. Pasado ese tiempo, el turno puede reasignarse." },
+    { "type": "faq", "title": "Elegir barbero", "category": "policies", "question": "¿Puedo elegir con qué barbero me atiendo?", "answer": "Sí, al reservar podés elegir entre Martín, Lucas y Sofía." },
+    { "type": "faq", "title": "Descuento para estudiantes", "category": "products_services", "question": "¿Tienen descuentos para estudiantes?", "answer": "Los miércoles hay 15% de descuento en el corte de pelo para estudiantes con carnet vigente." },
+    { "type": "faq", "title": "Accesibilidad", "category": "contact", "question": "¿El local es accesible?", "answer": "El local está en planta baja y tiene acceso para sillas de ruedas." },
+    { "type": "faq", "title": "Comodidades", "category": "other", "question": "¿Ofrecen café o Wi-Fi?", "answer": "Ofrecemos café y Wi-Fi gratis mientras esperás." },
+    { "type": "faq", "title": "Feriados", "category": "hours", "question": "¿Abren en feriados?", "answer": "En los feriados no laborables cerramos. En los feriados laborables atendemos de 10:00 a 16:00." },
+    { "type": "text", "title": "Sobre nosotros", "category": "other", "body": "Barbería Centro abrió sus puertas en 2015. Hoy somos un equipo de 5 barberos que combina el corte clásico con técnicas modernas. Nos gusta que cada cliente salga conforme y vuelva." },
+    { "type": "text", "title": "Cuidado de la barba", "category": "other", "body": "Recomendamos lavar la barba 2 o 3 veces por semana con shampoo suave, hidratarla con aceite todos los días y recortar las puntas cada 4 semanas para mantener la forma." },
+    { "type": "text", "title": "Política de turnos", "category": "policies", "body": "Si un cliente falta a 3 turnos sin avisar, pedimos una seña de $200 para volver a reservar. La seña se descuenta del precio del servicio." }
+  ]
+}

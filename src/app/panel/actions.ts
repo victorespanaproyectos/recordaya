@@ -9,7 +9,7 @@ import {
   type StatusUpdate,
 } from "@/lib/appointments/service";
 import { zonedToUtc } from "@/lib/dates";
-import { requirePanelSession } from "@/lib/panel/auth";
+import { requireMember } from "@/lib/auth/session";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 
 export interface ActionResult {
@@ -44,10 +44,9 @@ export async function createAppointmentAction(
   _prev: ActionResult | null,
   formData: FormData,
 ): Promise<ActionResult> {
-  await requirePanelSession();
-
-  const businessId = str(formData.get("businessId"));
-  if (!UUID_RE.test(businessId)) return { ok: false, error: "Elige un negocio" };
+  // El negocio sale de la sesión: lo que llegue en el formulario se ignora.
+  const member = await requireMember("operator");
+  const businessId = member.businessId;
 
   const timeZone = await businessTimezone(businessId);
   if (!timeZone) return { ok: false, error: "El negocio no existe" };
@@ -89,13 +88,19 @@ const STATUS_MESSAGES: Record<StatusUpdate, string> = {
   no_show: "Turno marcado como ausente",
 };
 
+/** El turno debe pertenecer al negocio del miembro; si no, se responde igual que si no existiera. */
+async function ownsAppointment(id: string, businessId: string): Promise<boolean> {
+  const { data } = await getSupabaseAdmin().from("appointments").select("id").eq("id", id).eq("business_id", businessId).maybeSingle();
+  return !!data;
+}
+
 export async function setStatusAction(
   id: string,
   status: StatusUpdate,
   notify = true,
 ): Promise<ActionResult> {
-  await requirePanelSession();
-  if (!UUID_RE.test(id)) return { ok: false, error: "Turno inválido" };
+  const member = await requireMember("operator");
+  if (!UUID_RE.test(id) || !(await ownsAppointment(id, member.businessId))) return { ok: false, error: "Turno inválido" };
   if (!STATUS_UPDATES.includes(status)) return { ok: false, error: "Estado inválido" };
 
   try {
@@ -119,11 +124,13 @@ export async function rescheduleAction(
   _prev: ActionResult | null,
   formData: FormData,
 ): Promise<ActionResult> {
-  await requirePanelSession();
+  const member = await requireMember("operator");
 
   const id = str(formData.get("id"));
-  const timeZone = str(formData.get("timeZone"));
-  if (!UUID_RE.test(id) || !timeZone) return { ok: false, error: "Turno inválido" };
+  if (!UUID_RE.test(id) || !(await ownsAppointment(id, member.businessId))) return { ok: false, error: "Turno inválido" };
+  // La zona horaria sale del negocio, no del formulario.
+  const timeZone = (await businessTimezone(member.businessId)) ?? "";
+  if (!timeZone) return { ok: false, error: "Turno inválido" };
 
   const startsAt = zonedToUtc(str(formData.get("date")), str(formData.get("time")), timeZone);
   if (!startsAt) return { ok: false, error: "Completa la fecha y la hora" };
