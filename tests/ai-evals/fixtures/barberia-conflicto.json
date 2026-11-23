@@ -1,0 +1,7 @@
+{
+  "extends": "barberia",
+  "description": "AI-04: dos fuentes en conflicto sobre el precio del corte (450 en «Precio del corte» y 500 en esta).",
+  "sources": [
+    { "type": "faq", "title": "Lista de precios 2024", "category": "products_services", "question": "¿Cuál es el precio del corte de pelo?", "answer": "El corte de pelo cuesta $500." }
+  ]
+}
